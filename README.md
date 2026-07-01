@@ -34,6 +34,23 @@ npm run dev
 
 Frontend runs at http://localhost:3000.
 
+## Environment variables
+
+Templates live in the repo; secrets stay local only:
+
+| Template | Copy to | Used by |
+|----------|---------|---------|
+| `.env.example` | `.env` | Backend / Docker |
+| `frontend/.env.local.example` | `frontend/.env.local` | Next.js frontend |
+
+**Never commit** `.env`, `.env.local`, or any file containing real credentials. Stripe keys, JWT secrets, and production database URLs belong only in your local env files.
+
+## License
+
+Copyright © 2026 Phantom Equestrian. All rights reserved.
+
+This repository is public for transparency. Viewing source code does not grant any license to use, fork, or deploy this software commercially. See [LICENSE](LICENSE) for full terms.
+
 ## Documentation
 
 - [Data model](docs/data-model.md)

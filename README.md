@@ -9,52 +9,117 @@ Trust-first marketplace connecting riders with animal owners for verified riding
 
 ## Local development
 
-### Prerequisites
-
-- Docker and Docker Compose
-- Node.js 20+ (for frontend)
-
-### Backend + database
+### Quick start (recommended)
 
 ```bash
 cp .env.example .env
-docker compose up --build
+make up          # docker-compose up -d --no-recreate
+make doctor      # verify API + web health
 ```
 
-API runs at http://localhost:8000. Health check: http://localhost:8000/health
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8000 |
+| API docs | http://localhost:8000/docs |
 
-### Frontend
+### If `docker-compose up` fails with "permission denied"
+
+This machine uses **snap Docker**, which can block stopping containers. Symptoms:
+
+```
+Error response from daemon: cannot stop container: ... permission denied
+```
+
+**Full reset** (run in your terminal):
 
 ```bash
-cd frontend
-cp .env.local.example .env.local
-npm install
-npm run dev
+sudo snap restart docker
+sleep 3
+cd rideconnect
+docker-compose down
+docker-compose up --build -d
 ```
 
-Frontend runs at http://localhost:3000.
+Or print the same steps: `make reset-docker`
 
-## Environment variables
+**Workaround without resetting Docker** — run API in Docker, frontend on the host:
 
-Templates live in the repo; secrets stay local only:
+```bash
+make dev-split
+cd frontend && npm run dev
+```
+
+Use `docker-compose up -d --no-recreate` (via `make up`) instead of plain `docker-compose up` when containers are already running.
+
+### Default admin login (dev)
+
+Set in `.env`:
+
+```
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=change-me-admin
+```
+
+Sign in at http://localhost:3000/login
+
+### Dev seed data
+
+After migrations, load sample users, animals, and listings:
+
+```bash
+make up    # start db (+ api/web) if not already running
+make migrate
+make seed
+```
+
+If the `api` container cannot reach `db` (common with snap Docker), `make migrate` and `make seed` automatically fall back to the host using `localhost:5432` while the `db` container is running.
+
+**If login fails with "Is the API running?"** — the API may be down. Start it on the host:
+
+```bash
+make dev-api    # terminal 1 — API at http://localhost:8000
+```
+
+Ensure `db` is running (`make up` or `docker-compose up -d db`). The Docker `api` service often cannot reach `db` on snap Docker; `make dev-api` avoids that.
+
+All seeded email/password users use password `password123`. See [marketplace-ui.md](docs/marketplace-ui.md) for the full persona login table (riders, owners, dual-role, minor/guardian, friend invites, and booking scenarios).
+
+**Bulk admin-preview accounts** (`bulk.rider.*`, `bulk.owner.*`, `bulk.both.*`) also use `password123` — see [admin-ui.md](docs/admin-ui.md). These populate `/admin/users` pagination and owner animal counts; they are not persona walkthrough accounts.
+
+| Email | Role | Verification |
+|-------|------|--------------|
+| `both.verified@example.com` | rider + owner | verified |
+| `owner.verified@example.com` | owner | verified |
+| `rider.verified@example.com` | rider | verified |
+| `owner.verified2@example.com` | owner | verified (many listings) |
+| `rider.unverified@example.com` | rider | unverified (blocked) |
+| `owner.pending@example.com` | owner | pending (blocked from hosting) |
+| `minor.rider@example.com` | rider (minor) | unverified |
+| `guardian@example.com` | rider + owner | verified |
+
+OAuth-only dev user: `oauth.only@example.com` (no password; remains unverified).
+
+Set `SEED_DEV_DATA=true` or `ENVIRONMENT=development` in `.env` for the seed script to run.
+
+### Environment variables
 
 | Template | Copy to | Used by |
 |----------|---------|---------|
 | `.env.example` | `.env` | Backend / Docker |
-| `frontend/.env.local.example` | `frontend/.env.local` | Next.js frontend |
+| `frontend/.env.local.example` | `frontend/.env.local` | Next.js (host dev) |
 
-**Never commit** `.env`, `.env.local`, or any file containing real credentials. Stripe keys, JWT secrets, and production database URLs belong only in your local env files.
+**Never commit** `.env` or `.env.local`.
 
 ## License
 
 Copyright © 2026 Phantom Equestrian. All rights reserved.
 
-This repository is public for transparency. Viewing source code does not grant any license to use, fork, or deploy this software commercially. See [LICENSE](LICENSE) for full terms.
+See [LICENSE](LICENSE).
 
 ## Documentation
 
 - [Data model](docs/data-model.md)
-
-## Project context
-
-Product requirements and MVP scope live in the workspace Cursor rules at `.cursor/rules/rideconnect-mvp.mdc`.
+- [Design system](docs/design-system.md) — tokens, themes, spacing
+- [Admin UI](docs/admin-ui.md)
+- [Marketplace UI](docs/marketplace-ui.md)

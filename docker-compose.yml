@@ -30,7 +30,23 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"   # needed for hot reload inside Docker on some hosts
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules       # keep container's node_modules, don't overwrite from host
+      - /app/.next
+    depends_on:
+      - api
 
 volumes:
   postgres_data:

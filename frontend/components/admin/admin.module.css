@@ -47,6 +47,11 @@
   letter-spacing: 0.05em;
   color: var(--muted-foreground);
   margin-bottom: var(--space-2);
+  font-family: var(--font-sans);
+}
+
+.contentHeader h1 {
+  font-family: var(--font-heading);
 }
 
 .navLink {

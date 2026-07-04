@@ -13,6 +13,9 @@ interface EmptyStateProps {
 export function EmptyState({ title, description, action, children }: EmptyStateProps) {
   return (
     <div className={styles.emptyState}>
+      <div className={styles.emptyStateIcon} aria-hidden="true">
+        ◎
+      </div>
       <h2 className={styles.emptyStateTitle}>{title}</h2>
       <p className={styles.emptyStateDescription}>{description}</p>
       {action ? (

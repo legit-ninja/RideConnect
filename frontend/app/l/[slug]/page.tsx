@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ListingImage } from "@/components/marketplace/ListingImage";
+import { StarRating } from "@/components/marketplace/StarRating";
 import { activityTypeLabel } from "@/components/marketplace/marketplaceLabels";
 import styles from "@/components/marketplace/marketplace.module.css";
 import type { PublicListing } from "@/lib/api";
@@ -121,8 +122,9 @@ export default async function PublicListingPage({
       {listing.review_count > 0 && listing.review_average !== null ? (
         <section className={styles.detailSection}>
           <h2>Reviews</h2>
-          <p>
-            {listing.review_average.toFixed(1)} ★ · {listing.review_count} review
+          <StarRating value={listing.review_average} size="md" showValue />
+          <p className={styles.cardMeta}>
+            {listing.review_count} review
             {listing.review_count === 1 ? "" : "s"}
           </p>
         </section>

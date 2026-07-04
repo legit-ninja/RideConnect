@@ -1,41 +1,186 @@
 .header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-4) var(--page-padding-x);
-  border-bottom: 1px solid var(--border);
-  background: var(--background);
+  height: var(--header-height);
+  padding: 0 var(--page-padding-x);
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  transition:
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    backdrop-filter 0.4s ease;
+}
+
+.headerSolid {
+  border-bottom-color: var(--border);
+  background: color-mix(in srgb, var(--background) 95%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.headerTransparentLight {
+  border-bottom-color: transparent;
+  background: transparent;
 }
 
 .brand {
-  font-weight: 700;
-  font-size: var(--text-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-xl);
   color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.brandTransparent {
+  color: #ffffff;
+}
+
+.brandMark {
+  width: 24px;
+  height: 24px;
+  color: var(--primary);
+}
+
+.brandMarkTransparent {
+  color: var(--primary);
+}
+
+.navDesktop {
+  display: none;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.navLink {
+  color: var(--muted-foreground);
+  transition: color 0.2s ease;
+}
+
+.navLink:hover {
+  color: var(--primary);
+}
+
+.navLinkTransparent {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.navLinkTransparent:hover {
+  color: #ffffff;
+}
+
+.navActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   font-size: var(--text-sm);
+}
+
+.authLink {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+
+.authLinkPrimary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.authLinkPrimary:hover {
+  background: var(--primary-hover);
+}
+
+.authLinkGhost {
+  color: inherit;
+}
+
+.authLinkGhostTransparent {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.menuButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+.mobilePanel {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  z-index: 49;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--page-padding-x) var(--space-5);
+  border-top: 1px solid var(--border);
+  background: var(--background);
+  box-shadow: 0 8px 24px rgba(13, 31, 26, 0.08);
+}
+
+.mobilePanelTransparent {
+  background: color-mix(in srgb, var(--accent) 96%, transparent);
+  border-top-color: rgba(255, 255, 255, 0.15);
 }
 
 .main {
   flex: 1;
   display: flex;
-  justify-content: center;
-  padding: var(--page-padding-y) var(--page-padding-x);
+  flex-direction: column;
+  width: 100%;
+  padding-top: var(--header-height);
 }
 
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
+.mainCentered {
+  align-items: center;
+  padding-left: var(--page-padding-x);
+  padding-right: var(--page-padding-x);
+  padding-bottom: var(--page-padding-y);
+}
+
+.mainFlush {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+}
+
+@media (min-width: 768px) {
+  .navDesktop {
+    display: flex;
   }
 
-  .nav {
-    width: 100%;
+  .menuButton {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .header {
+    padding: 0 var(--space-4);
   }
 }

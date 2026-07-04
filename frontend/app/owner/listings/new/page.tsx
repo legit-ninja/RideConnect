@@ -8,6 +8,7 @@ import { BlockedAction } from "@/components/marketplace/VerificationBanner";
 import { EmptyState } from "@/components/marketplace/EmptyState";
 import { InlineAlert } from "@/components/marketplace/InlineAlert";
 import { LoadingState } from "@/components/marketplace/LoadingState";
+import { PageHeader } from "@/components/marketplace/PageHeader";
 import styles from "@/components/marketplace/marketplace.module.css";
 import {
   ActivityType,
@@ -73,7 +74,10 @@ export default function NewListingPage() {
 
   return (
     <div className={styles.formPage}>
-      <h1>Create listing</h1>
+      <PageHeader
+        title="Create listing"
+        description="Publish a verified riding experience for riders in your region."
+      />
       <BlockedAction user={user} action="create listings" />
       {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}
       {user.verification_status === "verified" ? (

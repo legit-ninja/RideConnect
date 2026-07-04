@@ -8,9 +8,11 @@
   --muted-foreground: #6b6560;
   --border: #e8e4de;
   --border-subtle: #f0ebe4;
-  --primary: #2d5a3d;
-  --primary-foreground: #ffffff;
-  --primary-hover: #244a32;
+  --primary: #a67c2e;
+  --primary-foreground: #faf8f5;
+  --primary-hover: #8c6824;
+  --accent: #0d1f1a;
+  --accent-foreground: #faf8f5;
   --destructive: #b91c1c;
   --destructive-foreground: #ffffff;
   --success-bg: #d1fae5;
@@ -26,7 +28,7 @@
   --card: #ffffff;
   --card-border: var(--border);
   --input-border: #c9c2b8;
-  --focus-ring: #2d5a3d;
+  --focus-ring: #a67c2e;
   --skeleton-base: #e8e4de;
   --skeleton-shine: #f5f2ed;
   --hover-bg: #f0ebe4;
@@ -51,14 +53,20 @@
   --section-gap: var(--space-5);
   --content-max-admin: 1200px;
   --content-max-marketplace: 960px;
+  --content-max-wide: 1280px;
+  --header-height: 80px;
 
   /* Typography */
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-heading: var(--font-playfair), Georgia, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono), monospace;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-base: 16px;
   --text-lg: 18px;
+  --text-xl: 22px;
+  --text-3xl: 36px;
+  --text-4xl: 48px;
   --text-2xl: 28px;
   --line-height-tight: 1.25;
   --line-height-normal: 1.5;
@@ -81,9 +89,11 @@
   --muted-foreground: #a8a29e;
   --border: #3d3834;
   --border-subtle: #2a2623;
-  --primary: #5a9e72;
-  --primary-foreground: #0a0a0a;
-  --primary-hover: #6bb085;
+  --primary: #c9a84c;
+  --primary-foreground: #0d1f1a;
+  --primary-hover: #dbb85e;
+  --accent: #1a3830;
+  --accent-foreground: #f5f2ed;
   --destructive: #f87171;
   --destructive-foreground: #0a0a0a;
   --success-bg: #052e16;
@@ -99,7 +109,7 @@
   --card: #1a1714;
   --card-border: var(--border);
   --input-border: #4a4540;
-  --focus-ring: #5a9e72;
+  --focus-ring: #c9a84c;
   --skeleton-base: #2a2623;
   --skeleton-shine: #3d3834;
   --hover-bg: #1f1c19;
@@ -178,6 +188,15 @@ body {
   line-height: var(--line-height-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
 }
 
 * {

@@ -11,7 +11,6 @@ import { PageHeader } from "@/components/marketplace/PageHeader";
 import { VerificationBanner } from "@/components/marketplace/VerificationBanner";
 import { VerificationPill } from "@/components/marketplace/VerificationPill";
 import styles from "@/components/marketplace/marketplace.module.css";
-import stylesAuth from "../auth.module.css";
 import { ApiError, User, fetchCurrentUser } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
 
@@ -39,11 +38,6 @@ export default function DashboardPage() {
       });
   }, [router]);
 
-  function handleSignOut() {
-    clearToken();
-    router.push("/login");
-  }
-
   if (error) {
     return (
       <div className={styles.listingsPage}>
@@ -61,12 +55,12 @@ export default function DashboardPage() {
   }
 
   const isVerified = user.verification_status === "verified";
-  const roles = [user.is_rider && "Rider", user.is_owner && "Owner"].filter(Boolean);
+  const displayName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
 
   return (
     <div className={styles.listingsPage}>
       <PageHeader
-        title="Dashboard"
+        title={displayName ? `Welcome, ${displayName}` : "Dashboard"}
         description={`Signed in as ${user.email}`}
         actions={<VerificationPill status={user.verification_status} />}
       />
@@ -80,64 +74,84 @@ export default function DashboardPage() {
         </InlineAlert>
       ) : null}
 
-      <div className={styles.hubSection}>
-        <h2 className={styles.hubSectionTitle}>Your roles</h2>
-        <p>{roles.length > 0 ? roles.join(" · ") : "No roles set"}</p>
-      </div>
-
-      <div className={styles.hubSection}>
-        <h2 className={styles.hubSectionTitle}>Next steps</h2>
-        <div className={styles.hubLinks}>
-          {!isVerified ? (
-            <>
-              <Link href="/listings" className={styles.buttonSecondary}>
-                Browse rides (read-only)
-              </Link>
-              <span className={styles.cardMeta}>
-                Complete identity verification to request rides or host listings.
-              </span>
-            </>
-          ) : null}
-
-          {isVerified && user.is_rider ? (
-            <>
-              <Link href="/listings" className={styles.button}>
-                Find a ride
-              </Link>
-              <Link href="/rider/bookings" className={styles.buttonSecondary}>
-                My bookings
-              </Link>
-            </>
-          ) : null}
-
-          {isVerified && user.is_owner ? (
-            <>
-              <Link href="/owner/listings" className={styles.button}>
-                Manage listings
-              </Link>
-              <Link href="/owner/friends" className={styles.buttonSecondary}>
-                Verified friends
-              </Link>
-              <Link href="/owner/bookings" className={styles.buttonSecondary}>
-                Booking inbox
-              </Link>
-              <Link href="/owner/animals" className={styles.buttonSecondary}>
-                My animals
-              </Link>
-            </>
-          ) : null}
-
-          {user.is_admin ? (
-            <Link href="/admin" className={styles.buttonSecondary}>
-              Admin panel
+      <div className={styles.hubCardGrid}>
+        {!isVerified ? (
+          <article className={styles.hubCard}>
+            <h3>Complete verification</h3>
+            <p>Identity verification is required before you can request rides or host listings.</p>
+            <Link href="/settings" className={styles.button}>
+              Profile settings
             </Link>
-          ) : null}
-        </div>
+          </article>
+        ) : null}
+
+        {isVerified && user.is_rider ? (
+          <article className={styles.hubCard}>
+            <h3>Find a ride</h3>
+            <p>Browse verified listings and request your next riding experience.</p>
+            <Link href="/listings" className={styles.button}>
+              Browse listings
+            </Link>
+          </article>
+        ) : null}
+
+        {user.is_rider ? (
+          <article className={styles.hubCard}>
+            <h3>My bookings</h3>
+            <p>Track pending, approved, and past booking requests.</p>
+            <Link href="/rider/bookings" className={`${styles.button} ${styles.buttonSecondary}`}>
+              View bookings
+            </Link>
+          </article>
+        ) : null}
+
+        {isVerified && user.is_owner ? (
+          <article className={styles.hubCard}>
+            <h3>Owner hub</h3>
+            <p>Manage animals, listings, bookings, and verified friend invites.</p>
+            <Link href="/owner/listings" className={styles.button}>
+              Manage listings
+            </Link>
+          </article>
+        ) : null}
+
+        {user.is_owner ? (
+          <>
+            <article className={styles.hubCard}>
+              <h3>Booking inbox</h3>
+              <p>Review and respond to rider requests.</p>
+              <Link href="/owner/bookings" className={`${styles.button} ${styles.buttonSecondary}`}>
+                Open inbox
+              </Link>
+            </article>
+            <article className={styles.hubCard}>
+              <h3>Verified friends</h3>
+              <p>Invite trusted riders for friend-only listings.</p>
+              <Link href="/owner/friends" className={`${styles.button} ${styles.buttonSecondary}`}>
+                Manage invites
+              </Link>
+            </article>
+          </>
+        ) : null}
+
+        {user.is_admin ? (
+          <article className={styles.hubCard}>
+            <h3>Admin panel</h3>
+            <p>Moderation, verification queue, and platform audit tools.</p>
+            <Link href="/admin" className={`${styles.button} ${styles.buttonSecondary}`}>
+              Open admin
+            </Link>
+          </article>
+        ) : null}
       </div>
 
-      <button className={stylesAuth.button} type="button" onClick={handleSignOut}>
-        Sign out
-      </button>
+      {!isVerified ? (
+        <EmptyState
+          title="Browse while you wait"
+          description="You can explore listings before verification completes, but booking and hosting stay locked."
+          action={{ label: "Browse listings", href: "/listings" }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -2,6 +2,22 @@
 
 Trust-first marketplace for riders and owners — browse, book, and host verified riding experiences.
 
+## Base44 PR #2 — do not merge
+
+[PR #2 (luxury UI redesign)](https://github.com/legit-ninja/RideConnect/pull/2) adds a parallel `src/` + Tailwind stack that is **not integrated** with this app. Do not merge it into `master`.
+
+| PR dependency | Native alternative |
+|---------------|-------------------|
+| Base44 SDK (`base44Client`) | [`frontend/lib/api.ts`](../frontend/lib/api.ts) + FastAPI |
+| Tailwind + shadcn (`@/components/ui/*`) | CSS modules + [`globals.css`](../frontend/app/globals.css) tokens |
+| React Router | Next.js App Router |
+| TanStack Query | Server components + client `fetch` / `useEffect` |
+| framer-motion | CSS utilities in [`utilities.css`](../frontend/app/utilities.css) |
+| Google Fonts CDN | `next/font/google` (Playfair Display) |
+| Unsplash images | Local seed assets under `frontend/public/images/` |
+
+The luxury visual design is ported natively into `frontend/` (gold primary, Playfair headings, hero home page, site footer, enhanced cards).
+
 ## Dev logins
 
 After `make seed`, all email users use password `password123`:
@@ -36,7 +52,7 @@ After `make seed`, all email users use password `password123`:
 
 | Route | Purpose |
 |-------|---------|
-| `/` | Landing |
+| `/` | Luxury landing (hero, how-it-works, featured listings) |
 | `/login`, `/register` | Auth |
 | `/dashboard` | Role-aware hub — next steps by persona |
 | `/listings` | Browse rides (filters, cards) |

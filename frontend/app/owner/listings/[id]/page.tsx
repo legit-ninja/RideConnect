@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/marketplace/EmptyState";
 import { InlineAlert } from "@/components/marketplace/InlineAlert";
 import { ListingImage } from "@/components/marketplace/ListingImage";
 import { LoadingState } from "@/components/marketplace/LoadingState";
+import { PageHeader } from "@/components/marketplace/PageHeader";
 import styles from "@/components/marketplace/marketplace.module.css";
 import {
   ApiError,
@@ -117,7 +118,10 @@ export default function EditListingPage() {
 
   return (
     <div className={styles.formPage}>
-      <h1>Edit listing</h1>
+      <PageHeader
+        title="Edit listing"
+        description="Update pricing, availability, and photos for this ride."
+      />
       <BlockedAction user={user} action="edit listings" />
       {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}
       {success ? <InlineAlert variant="success">{success}</InlineAlert> : null}

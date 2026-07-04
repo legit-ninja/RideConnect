@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/marketplace/EmptyState";
 import { InlineAlert } from "@/components/marketplace/InlineAlert";
@@ -37,6 +38,7 @@ export default function ListingsPage() {
   const [activityType, setActivityType] = useState<ActivityType | "">("");
   const [speciesId, setSpeciesId] = useState("");
   const [priceBand, setPriceBand] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -77,7 +79,17 @@ export default function ListingsPage() {
     setPriceBand(0);
   }
 
-  const hasFilters = activityType !== "" || priceBand !== 0;
+  const hasFilters = activityType !== "" || priceBand !== 0 || searchQuery.trim() !== "";
+
+  const visibleListings = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return listings;
+    return listings.filter(
+      (listing) =>
+        listing.animal_name.toLowerCase().includes(query) ||
+        listing.display_location.toLowerCase().includes(query),
+    );
+  }, [listings, searchQuery]);
 
   return (
     <div className={styles.listingsPage}>
@@ -87,6 +99,17 @@ export default function ListingsPage() {
       />
 
       {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}
+
+      <div className={styles.searchRow}>
+        <input
+          type="search"
+          className={styles.searchInput}
+          placeholder="Search by name or location…"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          aria-label="Search listings"
+        />
+      </div>
 
       <div className={styles.filters}>
         <select
@@ -138,7 +161,7 @@ export default function ListingsPage() {
 
       {loading ? (
         <LoadingState label="Loading listings" />
-      ) : listings.length === 0 ? (
+      ) : visibleListings.length === 0 ? (
         <EmptyState
           title="No listings found"
           description="Try adjusting your filters or run make seed to load dev data."
@@ -149,14 +172,21 @@ export default function ListingsPage() {
           }
         >
           {hasFilters ? (
-            <button type="button" className={styles.buttonSecondary} onClick={clearFilters}>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => {
+                clearFilters();
+                setSearchQuery("");
+              }}
+            >
               Clear filters
             </button>
           ) : null}
         </EmptyState>
       ) : (
         <div className={styles.grid}>
-          {listings.map((listing) => (
+          {visibleListings.map((listing) => (
             <ListingCard key={listing.id} listing={listing} />
           ))}
         </div>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ListingSummary } from "@/lib/api";
 
 import { ListingImage } from "./ListingImage";
+import { StarRating } from "./StarRating";
 import { activityTypeLabel } from "./marketplaceLabels";
 import styles from "./marketplace.module.css";
 
@@ -16,13 +17,14 @@ function formatPrice(price: string, friendOnly: boolean): string {
 
 interface ListingCardProps {
   listing: ListingSummary;
+  rating?: number | null;
 }
 
-export function ListingCard({ listing }: ListingCardProps) {
+export function ListingCard({ listing, rating }: ListingCardProps) {
   const photo = listing.photo_urls[0];
 
   return (
-    <Link href={`/l/${listing.slug}`} className={styles.card}>
+    <Link href={`/l/${listing.slug}`} className={`${styles.card} cardHover`}>
       <ListingImage src={photo} alt={listing.animal_name} className={styles.cardImage} />
       <div className={styles.cardBody}>
         <div className={styles.cardTitle}>{listing.animal_name}</div>
@@ -32,6 +34,9 @@ export function ListingCard({ listing }: ListingCardProps) {
         <div className={styles.cardMeta}>
           {activityTypeLabel(listing.activity_type)} · {listing.display_location}
         </div>
+        {rating != null && rating > 0 ? (
+          <StarRating value={rating} showValue />
+        ) : null}
         {listing.availability ? (
           <div className={styles.cardMeta}>{listing.availability}</div>
         ) : null}

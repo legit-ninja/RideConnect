@@ -52,8 +52,9 @@ export default async function InviteLandingPage({
   const loginHref = `/login${buildAuthQuery({ src: "invite", ref: token, next: `/i/${token}` })}`;
 
   return (
-    <div className={styles.detailPage}>
-      <h1>Verified friend invite</h1>
+    <div className={styles.inviteHero}>
+      <span className="sectionEyebrow">Verified friend invite</span>
+      <h1>You&apos;re invited to connect</h1>
 
       {!invite.token_valid ? (
         <div className={styles.banner} role="alert">

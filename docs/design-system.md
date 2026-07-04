@@ -6,14 +6,15 @@ Semantic tokens, theme modes, and visual conventions for the RideConnect fronten
 
 - Next.js App Router + TypeScript
 - CSS modules (`admin.module.css`, `marketplace.module.css`, `auth.module.css`)
+- Shared utilities in `frontend/app/utilities.css` (hero overlay, card hover, section eyebrow)
 - **No Tailwind / shadcn** — all colors via CSS custom properties in `frontend/app/globals.css`
 
 ## Theme modes
 
 | Preference | `data-theme` on `<html>` | Behavior |
 |------------|--------------------------|----------|
-| Light | `light` | Warm stone palette, forest green accent |
-| Dark | `dark` | Dark stone palette, lighter green accent |
+| Light | `light` | Warm stone palette, gold accent, Playfair headings |
+| Dark | `dark` | Deep forest palette, lighter gold accent |
 | System | `light` or `dark` | Follows OS `prefers-color-scheme`; updates live when OS changes |
 | High contrast | `high-contrast` | Black/white with high-visibility accents (accessibility) |
 
@@ -34,7 +35,8 @@ Hex values are defined **only** in [`frontend/app/globals.css`](../frontend/app/
 | `--background` / `--foreground` | Page surface and text |
 | `--muted` / `--muted-foreground` | Subtle backgrounds and de-emphasized text |
 | `--border` / `--border-subtle` | Dividers, table borders |
-| `--primary` / `--primary-foreground` / `--primary-hover` | Primary buttons, active nav |
+| `--primary` / `--primary-foreground` / `--primary-hover` | Primary buttons, active nav (gold accent) |
+| `--accent` / `--accent-foreground` | Deep forest contrast sections, hero backgrounds |
 | `--destructive` / `--destructive-foreground` | Danger actions, errors |
 | `--success-bg` / `--success-fg` | Verified badges, success alerts |
 | `--warning-bg` / `--warning-fg` | Unverified badges, warnings |
@@ -61,7 +63,8 @@ Hex values are defined **only** in [`frontend/app/globals.css`](../frontend/app/
 | Token | Value |
 |-------|-------|
 | `--font-sans` | Geist Sans + system fallback |
-| `--text-xs` … `--text-2xl` | 12, 14, 16, 18, 28 px |
+| `--font-heading` | Playfair Display + Georgia fallback (headings) |
+| `--text-xs` … `--text-4xl` | 12, 14, 16, 18, 22, 28, 36, 48 px |
 
 ### Radius
 
@@ -80,6 +83,8 @@ Hex values are defined **only** in [`frontend/app/globals.css`](../frontend/app/
 | `marketplace.module.css` | Marketplace pages and components |
 | `auth.module.css` | `/login`, `/register` |
 | `layout.module.css` | Site header and main shell |
+| `utilities.css` | Global layout utilities (hero overlay, card hover) |
+| `SiteFooter.module.css` | Site footer |
 | `ThemeToggle.module.css` | Header theme control |
 
 Do **not** cross-import admin components into marketplace pages (or vice versa). Share **tokens**, not components.

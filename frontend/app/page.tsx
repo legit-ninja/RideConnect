@@ -66,7 +66,13 @@ export default async function Home() {
   return (
     <div className={styles.home}>
       <section className={styles.hero}>
-        <div className={styles.heroBackground} aria-hidden="true" />
+        <div className={styles.heroBackground} aria-hidden="true">
+          <img
+            src="/images/hero/galloping-horse.png"
+            alt=""
+            className={styles.heroImage}
+          />
+        </div>
         <div className={`${styles.heroOverlay} heroOverlay`} aria-hidden="true" />
         <div className={`${styles.heroContent} scrollFadeIn`}>
           <span className={styles.heroBadge}>Trust-first riding marketplace</span>

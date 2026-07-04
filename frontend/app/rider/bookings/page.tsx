@@ -14,7 +14,7 @@ import {
   bookingStatusLabel,
 } from "@/components/marketplace/marketplaceLabels";
 import styles from "@/components/marketplace/marketplace.module.css";
-import { ApiError, BookingRequest, User, fetchBookings, fetchCurrentUser } from "@/lib/api";
+import { ApiError, BookingRequest, User, createBookingReview, fetchBookings, fetchCurrentUser } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 
 export default function RiderBookingsPage() {
@@ -22,6 +22,25 @@ export default function RiderBookingsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<BookingRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reviewBusy, setReviewBusy] = useState<string | null>(null);
+
+  async function submitReview(bookingId: string, form: HTMLFormElement) {
+    const token = getToken();
+    if (!token) return;
+    const data = new FormData(form);
+    const rating = Number(data.get("rating"));
+    const body = String(data.get("body") || "");
+    setReviewBusy(bookingId);
+    setError(null);
+    try {
+      await createBookingReview(token, bookingId, { rating, body: body || undefined });
+      form.reset();
+    } catch (err: unknown) {
+      setError(err instanceof ApiError ? err.message : "Review failed.");
+    } finally {
+      setReviewBusy(null);
+    }
+  }
 
   useEffect(() => {
     const token = getToken();
@@ -100,7 +119,41 @@ export default function RiderBookingsPage() {
                     <td>{booking.owner_email}</td>
                     <td>{booking.payment_type === "free" ? "Free (friend)" : "Paid"}</td>
                     <td>{bookingStatusLabel(booking.status)}</td>
-                    <td>{new Date(booking.requested_at).toLocaleDateString()}</td>
+                    <td>
+                      {new Date(booking.requested_at).toLocaleDateString()}
+                      {booking.status === "completed" ? (
+                        <form
+                          className={styles.formPage}
+                          style={{ marginTop: "0.5rem" }}
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void submitReview(booking.id, event.currentTarget);
+                          }}
+                        >
+                          <label>
+                            Rating
+                            <select name="rating" required defaultValue="5">
+                              {[5, 4, 3, 2, 1].map((value) => (
+                                <option key={value} value={value}>
+                                  {value} stars
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label>
+                            Review (optional)
+                            <textarea name="body" rows={2} />
+                          </label>
+                          <button
+                            type="submit"
+                            className={styles.buttonSecondary}
+                            disabled={reviewBusy === booking.id}
+                          >
+                            {reviewBusy === booking.id ? "Saving…" : "Leave review"}
+                          </button>
+                        </form>
+                      ) : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>

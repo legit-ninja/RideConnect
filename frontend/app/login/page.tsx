@@ -1,19 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useState } from "react";
 
 import styles from "../auth.module.css";
 import { ApiError, fetchCurrentUser, loginUser } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { buildAuthQuery, postAuthPath } from "@/lib/funnel";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const src = searchParams.get("src");
+  const ref = searchParams.get("ref");
+  const next = searchParams.get("next");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const registerHref = `/register${buildAuthQuery({ src, ref, next })}`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,7 +32,9 @@ export default function LoginPage() {
       const tokenResponse = await loginUser({ email, password });
       setToken(tokenResponse.access_token);
       const user = await fetchCurrentUser(tokenResponse.access_token);
-      router.push(user.is_admin ? "/admin" : "/dashboard");
+      router.push(
+        postAuthPath({ src, ref, next, isAdmin: user.is_admin }),
+      );
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -69,8 +79,16 @@ export default function LoginPage() {
         </button>
       </form>
       <p className={styles.linkRow}>
-        No account? <Link href="/register">Create one</Link>
+        No account? <Link href={registerHref}>Create one</Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<p className={styles.authForm}>Loading…</p>}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -495,3 +495,89 @@
 .cardMetaSpaced {
   margin-top: var(--space-2);
 }
+
+.publicListingPage {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--page-padding-y) var(--page-padding-x);
+}
+
+.publicHeroImage {
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+}
+
+.photoStrip {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  overflow-x: auto;
+}
+
+.photoThumb {
+  width: 96px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.publicHeader {
+  margin: var(--space-4) 0;
+}
+
+.publicHeader h1 {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--space-2);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ownerCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--card);
+}
+
+.verifiedBadge {
+  color: var(--success-fg, #1f6f4a);
+  font-weight: 600;
+}
+
+.publicCta {
+  margin-top: var(--section-gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.shareBox {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.shareRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sharePreview {
+  width: 100%;
+  max-width: 400px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}

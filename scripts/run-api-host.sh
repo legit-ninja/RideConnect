@@ -17,4 +17,5 @@ if [[ -x "$ROOT/backend/.venv/bin/python" ]]; then
 fi
 
 echo "Starting API on http://localhost:8000 (DATABASE_URL=$DATABASE_URL)"
+"$PY" -m alembic upgrade head
 exec "$PY" -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload

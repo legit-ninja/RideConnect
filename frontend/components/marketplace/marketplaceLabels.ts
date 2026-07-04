@@ -7,19 +7,21 @@ const ACTIVITY_LABEL: Record<ActivityType, string> = {
   day_rental: "Day rental",
 };
 
+const FRIEND_STATUS_LABEL: Record<string, string> = {
+  pending_owner_confirm: "Awaiting rider",
+  pending_guardian: "Awaiting guardian",
+  active: "Active",
+  declined: "Declined",
+  revoked: "Revoked",
+};
+
 const BOOKING_STATUS_LABEL: Record<string, string> = {
   pending_owner: "Awaiting owner",
   pending_payment: "Payment pending",
   approved: "Approved",
   declined: "Declined",
   cancelled: "Cancelled",
-};
-
-const FRIEND_STATUS_LABEL: Record<string, string> = {
-  pending: "Pending",
-  accepted: "Accepted",
-  declined: "Declined",
-  cancelled: "Cancelled",
+  completed: "Completed",
 };
 
 export function activityTypeLabel(type: ActivityType | string): string {

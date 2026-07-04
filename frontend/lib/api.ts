@@ -15,6 +15,9 @@ export interface User {
   verification_status: VerificationStatus;
   is_minor: boolean;
   created_at: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string | null;
 }
 
 export interface TokenResponse {
@@ -39,9 +42,10 @@ export interface ListingSummary {
   price: string;
   availability: string | null;
   friend_only_allowed: boolean;
-  lat: number;
-  lng: number;
-  address: string;
+  slug: string;
+  display_location: string;
+  public_lat: number;
+  public_lng: number;
   photo_urls: string[];
   created_at: string;
 }
@@ -77,6 +81,8 @@ export interface OwnerListing {
   availability: string | null;
   friend_only_allowed: boolean;
   active: boolean;
+  slug: string;
+  display_location: string;
   created_at: string;
 }
 
@@ -224,13 +230,23 @@ async function request<T>(
   return (await response.json()) as T;
 }
 
-export function registerUser(payload: {
-  email: string;
-  password: string;
-  is_rider: boolean;
-  is_owner: boolean;
-}): Promise<User> {
-  return request<User>("/auth/register", {
+export function registerUser(
+  payload: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    is_rider: boolean;
+    is_owner: boolean;
+  },
+  funnel?: { src?: string; ref?: string },
+): Promise<User> {
+  const search = new URLSearchParams();
+  if (funnel?.src) search.set("src", funnel.src);
+  if (funnel?.ref) search.set("ref", funnel.ref);
+  const query = search.toString();
+  const path = query ? `/auth/register?${query}` : "/auth/register";
+  return request<User>(path, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -446,7 +462,12 @@ export function updateAdminListingActive(
   );
 }
 
-export type FriendInviteStatus = "pending" | "accepted" | "declined" | "cancelled";
+export type FriendInviteStatus =
+  | "pending_owner_confirm"
+  | "pending_guardian"
+  | "active"
+  | "declined"
+  | "revoked";
 
 export interface FriendInvite {
   id: string;
@@ -468,7 +489,8 @@ export type BookingStatus =
   | "pending_payment"
   | "approved"
   | "declined"
-  | "cancelled";
+  | "cancelled"
+  | "completed";
 
 export type PaymentType = "paid" | "free";
 
@@ -513,7 +535,7 @@ export function createFriendInvite(
 export function cancelFriendInvite(token: string, inviteId: string): Promise<FriendInvite> {
   return request<FriendInvite>(
     `/owner/friend-invites/${inviteId}`,
-    { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) },
+    { method: "PATCH", body: JSON.stringify({ status: "revoked" }) },
     token,
   );
 }
@@ -555,7 +577,7 @@ export function fetchBookings(
 export function updateBookingStatus(
   token: string,
   bookingId: string,
-  status: "approved" | "declined" | "cancelled",
+  status: "approved" | "declined" | "cancelled" | "completed",
 ): Promise<BookingRequest> {
   return request<BookingRequest>(
     `/bookings/${bookingId}`,
@@ -574,4 +596,174 @@ export function fetchAdminBookings(
   const query = search.toString();
   const path = query ? `/admin/bookings?${query}` : "/admin/bookings";
   return request<BookingListResponse>(path, {}, token);
+}
+
+export interface PublicListing {
+  animal_name: string;
+  species: string;
+  breed: string | null;
+  age: number | null;
+  photo_urls: string[];
+  activity_type: ActivityType;
+  price: string | null;
+  display_location: string;
+  public_lat: number;
+  public_lng: number;
+  owner_first_name: string;
+  owner_last_initial: string;
+  owner_verified: boolean;
+  owner_member_since: string;
+  review_count: number;
+  review_average: number | null;
+  slug: string;
+  active: boolean;
+}
+
+export interface PublicInvitePreview {
+  owner_first_name: string;
+  owner_verified: boolean;
+  animal_names: string[];
+  token_valid: boolean;
+  expired: boolean;
+  revoked: boolean;
+}
+
+export interface InviteToken {
+  id: string;
+  token: string;
+  animal_id: string | null;
+  max_uses: number;
+  use_count: number;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+  share_url: string;
+}
+
+export interface InviteTokenListResponse {
+  items: InviteToken[];
+}
+
+export interface AdminPlatformFlag {
+  id: string;
+  user_id: string;
+  user_email: string;
+  flag_type: string;
+  details: Record<string, unknown> | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface AdminPlatformFlagListResponse {
+  items: AdminPlatformFlag[];
+  total: number;
+}
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+export function publicListingUrl(slug: string): string {
+  return `${SITE_URL}/l/${slug}`;
+}
+
+export function fetchPublicListing(slug: string): Promise<PublicListing> {
+  return request<PublicListing>(`/public/listings/${slug}`);
+}
+
+export function fetchPublicInvite(token: string): Promise<PublicInvitePreview> {
+  return request<PublicInvitePreview>(`/public/invites/${token}`);
+}
+
+export function createInviteToken(
+  token: string,
+  payload: { animal_id?: string; max_uses?: number; expires_in_days?: number } = {},
+): Promise<InviteToken> {
+  return request<InviteToken>(
+    "/invites/tokens",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function fetchInviteTokens(token: string): Promise<InviteTokenListResponse> {
+  return request<InviteTokenListResponse>("/invites/tokens", {}, token);
+}
+
+export function revokeInviteToken(token: string, tokenId: string): Promise<void> {
+  return request<void>(`/invites/tokens/${tokenId}`, { method: "DELETE" }, token);
+}
+
+export function redeemInviteToken(
+  token: string,
+  inviteToken: string,
+): Promise<{ friend_invite_id: string; status: string }> {
+  return request(`/invites/tokens/${inviteToken}/redeem`, { method: "POST" }, token);
+}
+
+export function confirmFriendInvite(
+  token: string,
+  inviteId: string,
+  action: "confirm" | "decline",
+): Promise<{ status: string }> {
+  return request(
+    `/invites/${inviteId}/confirm`,
+    { method: "POST", body: JSON.stringify({ action }) },
+    token,
+  );
+}
+
+export function guardianApproveInvite(
+  token: string,
+  inviteId: string,
+): Promise<{ status: string }> {
+  return request(`/invites/${inviteId}/guardian-approve`, { method: "POST" }, token);
+}
+
+export function createBookingReview(
+  token: string,
+  bookingId: string,
+  payload: { rating: number; body?: string },
+): Promise<{ id: string; rating: number }> {
+  return request(
+    `/bookings/${bookingId}/reviews`,
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function fetchAdminFlags(token: string): Promise<AdminPlatformFlagListResponse> {
+  return request<AdminPlatformFlagListResponse>("/admin/flags", {}, token);
+}
+
+export async function uploadListingPhoto(
+  token: string,
+  listingId: string,
+  file: File,
+): Promise<{ id: string; url: string; thumbnail_url: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  const response = await fetch(`${API_URL}/owner/listings/${listingId}/photos`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!response.ok) {
+    throw new ApiError(await parseError(response), response.status);
+  }
+  return (await response.json()) as { id: string; url: string; thumbnail_url: string };
+}
+
+export function logClientEvent(
+  payload: {
+    event_type: string;
+    src?: string;
+    listing_slug?: string;
+    invite_token?: string;
+  },
+  token?: string | null,
+): Promise<void> {
+  return request<void>(
+    "/events",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
 }

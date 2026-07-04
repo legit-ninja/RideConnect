@@ -16,6 +16,10 @@ fi
 WEB_PORTS=$(docker port rideconnect-web-1 3000 2>/dev/null || true)
 API_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health 2>/dev/null || echo "000")
 WEB_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/ 2>/dev/null || echo "000")
+API_EXITED=false
+if docker-compose ps api 2>/dev/null | rg -q 'Exit'; then
+  API_EXITED=true
+fi
 
 echo "=== RideConnect dev doctor ==="
 docker-compose ps 2>/dev/null || true
@@ -28,6 +32,19 @@ if [[ -z "$WEB_PORTS" ]] && docker ps --format '{{.Names}}' 2>/dev/null | rg -q 
   echo "NOTE: web container is running but port 3000 is not published to the host."
   echo "      Run: make reset-docker  (or sudo snap restart docker && docker-compose down && docker-compose up --build -d)"
   echo ""
+fi
+
+if [[ "$API_EXITED" == true ]] || { [[ "$API_CODE" != "200" ]] && docker ps --format '{{.Names}}' 2>/dev/null | rg -q '^rideconnect-api-1$'; }; then
+  echo "ISSUE: API container is not serving /health (Snap Docker often blocks container networking)."
+  echo "FIX:   docker-compose stop api"
+  echo "       make dev-api    # run API on host against localhost:5432"
+  exit 1
+fi
+
+if [[ "$API_CODE" != "200" ]]; then
+  echo "ISSUE: API is not reachable on http://localhost:8000/health"
+  echo "FIX:   make dev-api    (DB must be up: docker-compose up -d db)"
+  exit 1
 fi
 
 if [[ "$H1_FAIL" == true ]]; then

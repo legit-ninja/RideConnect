@@ -1,20 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useState } from "react";
 
 import styles from "../auth.module.css";
 import { ApiError, registerUser } from "@/lib/api";
+import { buildAuthQuery } from "@/lib/funnel";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const src = searchParams.get("src");
+  const ref = searchParams.get("ref");
+  const next = searchParams.get("next");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [isRider, setIsRider] = useState(true);
   const [isOwner, setIsOwner] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const loginHref = `/login${buildAuthQuery({ src, ref, next })}`;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -22,13 +32,18 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await registerUser({
-        email,
-        password,
-        is_rider: isRider,
-        is_owner: isOwner,
-      });
-      router.push("/login?registered=1");
+      await registerUser(
+        {
+          email,
+          password,
+          first_name: firstName,
+          last_name: lastName,
+          is_rider: isRider,
+          is_owner: isOwner,
+        },
+        { src: src ?? undefined, ref: ref ?? undefined },
+      );
+      router.push(`${loginHref}${loginHref.includes("?") ? "&" : "?"}registered=1`);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -45,6 +60,24 @@ export default function RegisterPage() {
       <h1>Create account</h1>
       <p>Register as a rider, owner, or both. Verification is required before ride activity.</p>
       <form className={styles.authForm} onSubmit={handleSubmit}>
+        <div className={styles.field}>
+          <label htmlFor="first_name">First name</label>
+          <input
+            id="first_name"
+            required
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+          />
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="last_name">Last name</label>
+          <input
+            id="last_name"
+            required
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+          />
+        </div>
         <div className={styles.field}>
           <label htmlFor="email">Email</label>
           <input
@@ -92,8 +125,16 @@ export default function RegisterPage() {
         </button>
       </form>
       <p className={styles.linkRow}>
-        Already have an account? <Link href="/login">Sign in</Link>
+        Already have an account? <Link href={loginHref}>Sign in</Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<p className={styles.authForm}>Loading…</p>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

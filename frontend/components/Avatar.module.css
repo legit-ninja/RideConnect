@@ -1,0 +1,77 @@
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.sm {
+  width: 28px;
+  height: 28px;
+  font-size: var(--text-xs);
+}
+
+.md {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-sm);
+}
+
+.lg {
+  width: 48px;
+  height: 48px;
+  font-size: var(--text-lg);
+}
+
+.image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+}
+
+.initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.verifiedBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42%;
+  min-width: 13px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--background);
+  background: var(--success-bg);
+  color: var(--success-fg);
+}
+
+.verifiedIcon {
+  width: 65%;
+  height: 65%;
+}
+
+@media (forced-colors: active) {
+  .verifiedBadge {
+    border-color: Canvas;
+  }
+}

@@ -26,24 +26,18 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function getInitialPreference(): ThemePreference {
-  if (typeof window === "undefined") {
-    return "system";
-  }
-  return readStoredPreference();
-}
-
-function getInitialResolved(): ResolvedTheme {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-  return resolveTheme(readStoredPreference());
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreferenceState] =
-    useState<ThemePreference>(getInitialPreference);
-  const [resolved, setResolved] = useState<ResolvedTheme>(getInitialResolved);
+  // Fixed defaults for SSR/hydration; sync from localStorage after mount.
+  const [preference, setPreferenceState] = useState<ThemePreference>("system");
+  const [resolved, setResolved] = useState<ResolvedTheme>("light");
+
+  useEffect(() => {
+    const stored = readStoredPreference();
+    const nextResolved = resolveTheme(stored);
+    setPreferenceState(stored);
+    setResolved(nextResolved);
+    applyThemeToDocument(nextResolved);
+  }, []);
 
   const setPreference = useCallback((next: ThemePreference) => {
     setPreferenceState(next);

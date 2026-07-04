@@ -16,21 +16,26 @@ services:
       retries: 5
 
   api:
+    profiles: ["docker-api"]
     build:
       context: ./backend
     ports:
       - "8000:8000"
     env_file:
       - .env
+    extra_hosts:
+      # Snap Docker often blocks container-to-container traffic; reach Postgres via host port map.
+      - "host.docker.internal:host-gateway"
     environment:
-      DATABASE_URL: postgresql://rideconnect:rideconnect@db:5432/rideconnect
+      DATABASE_URL: postgresql://rideconnect:rideconnect@host.docker.internal:5432/rideconnect
       CORS_ORIGINS: http://localhost:3000
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./backend:/app
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      - upload_data:/app/uploads
+    command: sh -c "chmod +x scripts/wait-for-postgres.sh && scripts/wait-for-postgres.sh && alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   web:
     build:
@@ -46,7 +51,9 @@ services:
       - /app/node_modules       # keep container's node_modules, don't overwrite from host
       - /app/.next
     depends_on:
-      - api
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  upload_data:

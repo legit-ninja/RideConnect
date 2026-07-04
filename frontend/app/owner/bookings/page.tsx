@@ -28,7 +28,7 @@ import { getToken } from "@/lib/auth";
 
 type PendingAction = {
   booking: BookingRequest;
-  status: "approved" | "declined";
+  status: "approved" | "declined" | "completed";
 };
 
 export default function OwnerBookingsPage() {
@@ -154,6 +154,16 @@ export default function OwnerBookingsPage() {
                             Decline
                           </button>
                         </div>
+                      ) : booking.status === "approved" ? (
+                        <button
+                          type="button"
+                          className={styles.buttonSecondary}
+                          onClick={() =>
+                            setPending({ booking, status: "completed" })
+                          }
+                        >
+                          Mark complete
+                        </button>
                       ) : null}
                     </td>
                   </tr>
@@ -166,13 +176,27 @@ export default function OwnerBookingsPage() {
 
       <ConfirmDialog
         open={pending !== null}
-        title={pending?.status === "approved" ? "Approve booking?" : "Decline booking?"}
+        title={
+          pending?.status === "approved"
+            ? "Approve booking?"
+            : pending?.status === "completed"
+              ? "Mark booking complete?"
+              : "Decline booking?"
+        }
         description={
           pending
-            ? `${pending.status === "approved" ? "Approve" : "Decline"} the ride request from ${pending.booking.rider_email} for ${pending.booking.animal_name}.`
+            ? pending.status === "completed"
+              ? `Mark the ride with ${pending.booking.rider_email} for ${pending.booking.animal_name} as complete so both parties can leave reviews.`
+              : `${pending.status === "approved" ? "Approve" : "Decline"} the ride request from ${pending.booking.rider_email} for ${pending.booking.animal_name}.`
             : ""
         }
-        confirmLabel={pending?.status === "approved" ? "Approve" : "Decline"}
+        confirmLabel={
+          pending?.status === "approved"
+            ? "Approve"
+            : pending?.status === "completed"
+              ? "Mark complete"
+              : "Decline"
+        }
         destructive={pending?.status === "declined"}
         onConfirm={confirmAction}
         onCancel={() => setPending(null)}

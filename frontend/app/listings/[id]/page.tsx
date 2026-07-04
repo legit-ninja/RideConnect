@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { BlockedAction } from "@/components/marketplace/VerificationBanner";
 import { EmptyState } from "@/components/marketplace/EmptyState";
 import { InlineAlert } from "@/components/marketplace/InlineAlert";
+import { ListingImage } from "@/components/marketplace/ListingImage";
 import { LoadingState } from "@/components/marketplace/LoadingState";
 import { activityTypeLabel } from "@/components/marketplace/marketplaceLabels";
 import styles from "@/components/marketplace/marketplace.module.css";
@@ -196,14 +197,9 @@ export default function ListingDetailPage() {
       <p>
         <Link href="/listings">← Back to browse</Link>
       </p>
-      {photo ? (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={photo} alt={listing.animal_name} className={styles.detailImage} />
-          {photoCount > 1 ? (
-            <p className={styles.cardMeta}>+{photoCount - 1} more photo(s)</p>
-          ) : null}
-        </>
+      <ListingImage src={photo} alt={listing.animal_name} className={styles.detailImage} />
+      {photoCount > 1 ? (
+        <p className={styles.cardMeta}>+{photoCount - 1} more photo(s)</p>
       ) : null}
       <h1>{listing.animal_name}</h1>
       <p>
@@ -223,7 +219,7 @@ export default function ListingDetailPage() {
       </p>
       <div className={styles.detailSection}>
         <h2>Location</h2>
-        <p>{listing.address}</p>
+        <p>{listing.display_location}</p>
       </div>
       {listing.availability ? (
         <div className={styles.detailSection}>

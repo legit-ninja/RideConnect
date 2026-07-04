@@ -121,5 +121,8 @@ See [LICENSE](LICENSE).
 
 - [Data model](docs/data-model.md)
 - [Design system](docs/design-system.md) — tokens, themes, spacing
+- [Public listings & invite links spec](docs/specs/public-listings-and-invite-links-spec.md)
+- [Data model additions](docs/specs/data-model-additions.md)
+- [Anti-trafficking safety rules](docs/safety/anti-trafficking.md)
 - [Admin UI](docs/admin-ui.md)
 - [Marketplace UI](docs/marketplace-ui.md)

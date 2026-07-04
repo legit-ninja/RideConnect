@@ -1,5 +1,6 @@
 from app.models.user import User, VerificationStatus
 from app.services.security import create_access_token, hash_password
+from tests.helpers import seed_test_listing
 
 
 def test_non_admin_forbidden_on_stats(client, db_session) -> None:
@@ -112,10 +113,6 @@ def test_admin_get_user_not_found(client, db_session) -> None:
 def test_admin_user_detail_includes_marketplace_counts(
     client, db_session, horse_species
 ) -> None:
-    from app.models.animal import Animal
-    from app.models.listing import Listing, ActivityType
-    from decimal import Decimal
-
     from tests.conftest import auth_header, create_user
 
     admin_user = create_user(
@@ -130,26 +127,7 @@ def test_admin_user_detail_includes_marketplace_counts(
         is_owner=True,
         verification_status=VerificationStatus.VERIFIED,
     )
-    animal = Animal(
-        owner_id=owner.id,
-        species_id=horse_species.id,
-        name="Test Animal",
-        lat=35.0,
-        lng=-82.0,
-        address="Test",
-        photo_urls=[],
-    )
-    db_session.add(animal)
-    db_session.flush()
-    listing = Listing(
-        animal_id=animal.id,
-        owner_id=owner.id,
-        activity_type=ActivityType.LESSON,
-        price=Decimal("50.00"),
-        active=True,
-    )
-    db_session.add(listing)
-    db_session.commit()
+    seed_test_listing(db_session, horse_species=horse_species, owner=owner, active=True)
 
     response = client.get(f"/admin/users/{owner.id}", headers=auth_header(admin_user))
     assert response.status_code == 200
@@ -160,10 +138,6 @@ def test_admin_user_detail_includes_marketplace_counts(
 
 
 def test_admin_listings_filter_by_owner_id(client, db_session, horse_species) -> None:
-    from app.models.animal import Animal
-    from app.models.listing import Listing, ActivityType
-    from decimal import Decimal
-
     from tests.conftest import auth_header, create_user
 
     admin_user = create_user(
@@ -184,28 +158,20 @@ def test_admin_listings_filter_by_owner_id(client, db_session, horse_species) ->
         is_owner=True,
         verification_status=VerificationStatus.VERIFIED,
     )
-    for owner, name in [(owner_a, "A"), (owner_b, "B")]:
-        animal = Animal(
-            owner_id=owner.id,
-            species_id=horse_species.id,
-            name=f"Animal {name}",
-            lat=35.0,
-            lng=-82.0,
-            address="Test",
-            photo_urls=[],
-        )
-        db_session.add(animal)
-        db_session.flush()
-        db_session.add(
-            Listing(
-                animal_id=animal.id,
-                owner_id=owner.id,
-                activity_type=ActivityType.TRAIL_RIDE,
-                price=Decimal("40.00"),
-                active=True,
-            )
-        )
-    db_session.commit()
+    seed_test_listing(
+        db_session,
+        horse_species=horse_species,
+        owner=owner_a,
+        animal_name="Animal A",
+        active=True,
+    )
+    seed_test_listing(
+        db_session,
+        horse_species=horse_species,
+        owner=owner_b,
+        animal_name="Animal B",
+        active=True,
+    )
 
     response = client.get(
         f"/admin/listings?owner_id={owner_a.id}",

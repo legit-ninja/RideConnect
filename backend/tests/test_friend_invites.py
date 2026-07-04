@@ -41,7 +41,7 @@ def test_owner_creates_friend_invite(client, db_session) -> None:
         json={"invitee_email": "target@example.com"},
     )
     assert response.status_code == 201
-    assert response.json()["status"] == "pending"
+    assert response.json()["status"] == "pending_owner_confirm"
 
 
 def test_rider_accepts_friend_invite(client, db_session) -> None:
@@ -71,4 +71,4 @@ def test_rider_accepts_friend_invite(client, db_session) -> None:
         json={"status": "accepted"},
     )
     assert response.status_code == 200
-    assert response.json()["status"] == "accepted"
+    assert response.json()["status"] == "active"

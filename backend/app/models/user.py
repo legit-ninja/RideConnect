@@ -41,6 +41,14 @@ class User(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
     )
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    first_name: Mapped[str] = mapped_column(String(100), default="Member", nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), default="", nullable=False)
+    # Storage key (not URL) so we reuse the same upload pipeline/backend as listing
+    # photos (app/services/storage.py); public URL is computed at read time via
+    # get_public_url(). Null means the client should render initials, not a broken
+    # image or a Gravatar lookup (no Gravatar/PII-derived avatars — see MVP rule on
+    # no PII on public surfaces).
+    profile_photo_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

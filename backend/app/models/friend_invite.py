@@ -10,10 +10,11 @@ from app.db import Base
 
 
 class FriendInviteStatus(str, enum.Enum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
+    PENDING_OWNER_CONFIRM = "pending_owner_confirm"
+    PENDING_GUARDIAN = "pending_guardian"
+    ACTIVE = "active"
     DECLINED = "declined"
-    CANCELLED = "cancelled"
+    REVOKED = "revoked"
 
 
 class FriendInvite(Base):
@@ -28,6 +29,9 @@ class FriendInvite(Base):
     rider_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
     )
+    invite_token_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("invite_tokens.id"), nullable=True
+    )
     invitee_email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     status: Mapped[FriendInviteStatus] = mapped_column(
         Enum(
@@ -36,12 +40,18 @@ class FriendInvite(Base):
             values_callable=lambda e: [m.value for m in e],
         ),
         nullable=False,
-        default=FriendInviteStatus.PENDING,
+        default=FriendInviteStatus.PENDING_OWNER_CONFIRM,
     )
     invited_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    owner_confirmed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    guardian_approved_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -50,3 +60,4 @@ class FriendInvite(Base):
 
     owner = relationship("User", foreign_keys=[owner_id])
     rider = relationship("User", foreign_keys=[rider_id])
+    invite_token = relationship("InviteToken", foreign_keys=[invite_token_id])

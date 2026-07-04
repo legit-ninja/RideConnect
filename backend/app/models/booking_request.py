@@ -18,6 +18,7 @@ class BookingStatus(str, enum.Enum):
     PENDING_PAYMENT = "pending_payment"
     PENDING_OWNER = "pending_owner"
     APPROVED = "approved"
+    COMPLETED = "completed"
     DECLINED = "declined"
     CANCELLED = "cancelled"
 
@@ -62,6 +63,9 @@ class BookingRequest(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

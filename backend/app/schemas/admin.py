@@ -114,3 +114,18 @@ class AdminAuditLogListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class AdminPlatformFlagSummary(BaseModel):
+    id: UUID
+    user_id: UUID
+    user_email: str
+    flag_type: str
+    details: dict | None
+    created_at: datetime
+    resolved_at: datetime | None
+
+
+class AdminPlatformFlagListResponse(BaseModel):
+    items: list[AdminPlatformFlagSummary]
+    total: int

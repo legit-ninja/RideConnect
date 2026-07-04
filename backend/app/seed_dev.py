@@ -18,7 +18,8 @@ from app.models.listing import ActivityType, Listing
 from app.models.oauth_account import OAuthAccount, OAuthProvider
 from app.models.species import Species
 from app.models.user import User, VerificationStatus
-from app.services.security import hash_password
+from app.services.public_location import jitter_coordinates
+from app.services.slug import generate_listing_slug
 
 DEV_PASSWORD = "password123"
 
@@ -108,6 +109,14 @@ def _allowed() -> bool:
     return settings.seed_dev_data or settings.environment == "development"
 
 
+def _name_from_email(email: str) -> tuple[str, str]:
+    local = email.split("@", 1)[0]
+    parts = local.replace(".", " ").replace("_", " ").split()
+    if len(parts) >= 2:
+        return parts[0].title(), parts[-1].title()
+    return parts[0].title() if parts else "Member", ""
+
+
 def upsert_user(
     db,
     *,
@@ -121,7 +130,12 @@ def upsert_user(
     is_minor: bool = False,
     guardian_user_id: uuid.UUID | None = None,
     created_at: datetime | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
 ) -> User:
+    derived_first, derived_last = _name_from_email(email)
+    first_name = first_name or derived_first
+    last_name = last_name or derived_last
     user = db.get(User, user_id)
     if user is None:
         user = db.scalar(select(User).where(User.email == email))
@@ -130,6 +144,8 @@ def upsert_user(
             id=user_id,
             email=email,
             password_hash=password_hash,
+            first_name=first_name,
+            last_name=last_name,
             is_rider=is_rider,
             is_owner=is_owner,
             is_admin=is_admin,
@@ -143,6 +159,8 @@ def upsert_user(
     else:
         user.email = email
         user.password_hash = password_hash
+        user.first_name = first_name
+        user.last_name = last_name
         user.is_rider = is_rider
         user.is_owner = is_owner
         user.is_admin = is_admin
@@ -455,17 +473,30 @@ def upsert_animal(db, *, key: str, owner: User, species_id: uuid.UUID, data: dic
 def upsert_listing(db, *, key: str, owner: User, animal: Animal, data: dict) -> Listing:
     listing_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"rideconnect.dev.listing.{key}")
     listing = db.get(Listing, listing_id)
+    display_location = data.pop("display_location", None) or "Appalachian NC"
     if listing is None:
+        slug = generate_listing_slug(animal.name)
+        public_lat, public_lng = jitter_coordinates(animal.lat, animal.lng)
         listing = Listing(
             id=listing_id,
             animal_id=animal.id,
             owner_id=owner.id,
+            slug=slug,
+            display_location=display_location,
+            public_lat=public_lat,
+            public_lng=public_lng,
             **data,
         )
         db.add(listing)
     else:
         listing.animal_id = animal.id
         listing.owner_id = owner.id
+        if not listing.slug:
+            listing.slug = generate_listing_slug(animal.name)
+        if listing.public_lat is None or listing.public_lng is None:
+            listing.public_lat, listing.public_lng = jitter_coordinates(animal.lat, animal.lng)
+        if not listing.display_location:
+            listing.display_location = display_location
         for field, value in data.items():
             setattr(listing, field, value)
     return listing
@@ -861,7 +892,7 @@ def seed_friend_invites(db, users: dict[str, User]) -> None:
         owner=owner,
         rider=rider,
         email=rider.email,
-        status=FriendInviteStatus.ACCEPTED,
+        status=FriendInviteStatus.ACTIVE,
     )
     upsert_friend_invite(
         db,
@@ -869,7 +900,7 @@ def seed_friend_invites(db, users: dict[str, User]) -> None:
         owner=owner,
         rider=users["rider_unverified"],
         email=users["rider_unverified"].email,
-        status=FriendInviteStatus.PENDING,
+        status=FriendInviteStatus.PENDING_OWNER_CONFIRM,
     )
 
 

@@ -3,9 +3,8 @@ from decimal import Decimal
 from sqlalchemy import select
 
 from app.models.admin_audit_log import AdminAuditAction, AdminAuditLog
-from app.models.animal import Animal
-from app.models.listing import ActivityType, Listing
 from app.models.user import VerificationStatus
+from tests.helpers import seed_test_listing
 
 
 def test_admin_deactivate_listing_writes_audit(
@@ -26,26 +25,13 @@ def test_admin_deactivate_listing_writes_audit(
         is_owner=True,
         verification_status=VerificationStatus.VERIFIED,
     )
-    animal = Animal(
-        owner_id=owner.id,
-        species_id=horse_species.id,
-        name="Star",
-        lat=36.2168,
-        lng=-81.6746,
-        address="Boone, NC",
-        photo_urls=[],
-    )
-    db_session.add(animal)
-    db_session.flush()
-    listing = Listing(
-        animal_id=animal.id,
-        owner_id=owner.id,
-        activity_type=ActivityType.TRAIL_RIDE,
+    listing = seed_test_listing(
+        db_session,
+        horse_species=horse_species,
+        owner=owner,
         price=Decimal("75.00"),
         active=True,
     )
-    db_session.add(listing)
-    db_session.commit()
 
     response = client.patch(
         f"/admin/listings/{listing.id}",

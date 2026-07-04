@@ -34,9 +34,10 @@ def listing_to_summary(listing: Listing) -> ListingSummary:
         price=listing.price,
         availability=listing.availability,
         friend_only_allowed=listing.friend_only_allowed,
-        lat=animal.lat,
-        lng=animal.lng,
-        address=animal.address,
+        slug=listing.slug,
+        display_location=listing.display_location,
+        public_lat=listing.public_lat,
+        public_lng=listing.public_lng,
         photo_urls=list(animal.photo_urls or []),
         created_at=listing.created_at,
     )
@@ -89,8 +90,7 @@ def search_listings(
 
     filtered: list[Listing] = []
     for listing in listings:
-        animal = listing.animal
-        distance = haversine_km(lat, lng, animal.lat, animal.lng)
+        distance = haversine_km(lat, lng, listing.public_lat, listing.public_lng)
         if distance <= radius_km:
             filtered.append(listing)
     return filtered

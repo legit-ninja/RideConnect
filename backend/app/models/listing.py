@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,9 +41,14 @@ class Listing(Base):
     availability: Mapped[str | None] = mapped_column(Text, nullable=True)
     friend_only_allowed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    slug: Mapped[str] = mapped_column(String(128), unique=True, nullable=False, index=True)
+    display_location: Mapped[str] = mapped_column(String(256), nullable=False)
+    public_lat: Mapped[float] = mapped_column(Float, nullable=False)
+    public_lng: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     animal = relationship("Animal", back_populates="listings")
     owner = relationship("User", back_populates="listings")
+    photos = relationship("ListingPhoto", back_populates="listing")

@@ -26,4 +26,4 @@ class FriendInviteListResponse(BaseModel):
 
 
 class UpdateFriendInviteStatusRequest(BaseModel):
-    status: str = Field(pattern="^(accepted|declined|cancelled)$")
+    status: str = Field(pattern="^(accepted|declined|revoked)$")

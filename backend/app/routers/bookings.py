@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -10,13 +10,15 @@ from app.dependencies import require_admin, require_owner, require_rider, requir
 from app.models.booking_request import BookingRequest, BookingStatus, PaymentType
 from app.models.listing import Listing
 from app.models.user import User
-from app.routers.friend_invites import get_accepted_friend_invite
+from app.routers.friend_invites import get_active_friend_invite
 from app.schemas.booking import (
     BookingListResponse,
     BookingResponse,
     CreateBookingRequest,
     UpdateBookingStatusRequest,
 )
+
+from app.services.events import log_event
 
 router = APIRouter(tags=["bookings"])
 
@@ -84,7 +86,7 @@ def create_booking(
     friend_invite_id = None
 
     if payment_type == PaymentType.FREE:
-        invite = get_accepted_friend_invite(db, listing.owner_id, rider.id)
+        invite = get_active_friend_invite(db, listing.owner_id, rider.id)
         if invite is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -106,6 +108,8 @@ def create_booking(
         note=payload.note,
     )
     db.add(booking)
+    db.flush()
+    log_event(db, "booking_requested", user_id=rider.id, payload={"booking_id": str(booking.id)})
     db.commit()
     loaded = _load_booking(db, booking.id)
     assert loaded is not None
@@ -170,6 +174,14 @@ def update_booking_status(
         booking.status = BookingStatus.DECLINED
     elif payload.status == "cancelled":
         booking.status = BookingStatus.CANCELLED
+    elif payload.status == "completed":
+        if booking.status != BookingStatus.APPROVED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only approved bookings can be marked completed",
+            )
+        booking.status = BookingStatus.COMPLETED
+        booking.completed_at = datetime.now(UTC)
     else:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status")
 

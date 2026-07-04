@@ -10,12 +10,15 @@ from app.dependencies import require_admin
 from app.models.admin_audit_log import AdminAuditAction
 from app.models.animal import Animal
 from app.models.listing import Listing
+from app.models.platform_flag import PlatformFlag
 from app.models.user import User, VerificationStatus
 from app.schemas.admin import (
     AdminAuditLogEntry,
     AdminAuditLogListResponse,
     AdminListingListResponse,
     AdminListingSummary,
+    AdminPlatformFlagSummary,
+    AdminPlatformFlagListResponse,
     AdminStatsResponse,
     AdminUserDetail,
     AdminUserListResponse,
@@ -25,6 +28,7 @@ from app.schemas.admin import (
     UpdateVerificationRequest,
 )
 from app.services.admin_audit import list_audit_logs, log_admin_action
+from app.services.events import log_event
 from app.services.admin_users import (
     count_by_verification,
     count_oauth_users,
@@ -154,6 +158,12 @@ def admin_update_verification(
 
     previous_status = user.verification_status
     user.verification_status = payload.verification_status
+
+    if (
+        previous_status != VerificationStatus.VERIFIED
+        and payload.verification_status == VerificationStatus.VERIFIED
+    ):
+        log_event(db, "verification_completed", user_id=user.id)
 
     log_admin_action(
         db,
@@ -356,3 +366,39 @@ def admin_list_audit(
     return AdminAuditLogListResponse(
         items=items, total=total, limit=limit, offset=offset
     )
+
+
+@router.get("/flags", response_model=AdminPlatformFlagListResponse)
+def admin_list_flags(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+    unresolved_only: bool = Query(default=True),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> AdminPlatformFlagListResponse:
+    # Authz: require_admin — trust & safety pattern flags for manual review.
+    base = select(PlatformFlag).options(selectinload(PlatformFlag.user))
+    count_stmt = select(func.count()).select_from(PlatformFlag)
+    if unresolved_only:
+        base = base.where(PlatformFlag.resolved_at.is_(None))
+        count_stmt = count_stmt.where(PlatformFlag.resolved_at.is_(None))
+
+    total = db.scalar(count_stmt) or 0
+    flags = list(
+        db.scalars(
+            base.order_by(PlatformFlag.created_at.desc()).limit(limit).offset(offset)
+        ).all()
+    )
+    items = [
+        AdminPlatformFlagSummary(
+            id=flag.id,
+            user_id=flag.user_id,
+            user_email=flag.user.email,
+            flag_type=flag.flag_type.value,
+            details=flag.details,
+            created_at=flag.created_at,
+            resolved_at=flag.resolved_at,
+        )
+        for flag in flags
+    ]
+    return AdminPlatformFlagListResponse(items=items, total=total)

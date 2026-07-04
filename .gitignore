@@ -20,5 +20,8 @@ out/
 # Docker
 postgres_data/
 
+# Local file uploads (dev/test storage backend)
+backend/uploads/
+
 # OS
 .DS_Store

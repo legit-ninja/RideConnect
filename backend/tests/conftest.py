@@ -63,6 +63,8 @@ def create_user(
     user = User(
         email=email,
         password_hash=hash_password("password123"),
+        first_name="Test",
+        last_name="User",
         is_rider=is_rider,
         is_owner=is_owner,
         is_admin=is_admin,

@@ -14,6 +14,7 @@ class ListingCreateRequest(BaseModel):
     availability: str | None = Field(default=None, max_length=2000)
     friend_only_allowed: bool = False
     active: bool = True
+    display_location: str | None = Field(default=None, max_length=256)
 
 
 class ListingUpdateRequest(BaseModel):
@@ -33,9 +34,10 @@ class ListingSummary(BaseModel):
     price: Decimal
     availability: str | None
     friend_only_allowed: bool
-    lat: float
-    lng: float
-    address: str
+    slug: str
+    display_location: str
+    public_lat: float
+    public_lng: float
     photo_urls: list[str]
     created_at: datetime
 
@@ -56,6 +58,10 @@ class ListingResponse(BaseModel):
     availability: str | None
     friend_only_allowed: bool
     active: bool
+    slug: str
+    display_location: str
+    public_lat: float
+    public_lng: float
     created_at: datetime
 
     model_config = {"from_attributes": True}

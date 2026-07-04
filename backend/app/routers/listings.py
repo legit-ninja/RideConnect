@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.db import get_db
+from app.dependencies import require_verified
 from app.models.listing import ActivityType
+from app.models.user import User
 from app.schemas.listing import ListingDetail, ListingSummary
 from app.services.listings import (
     get_listing_detail,
@@ -45,11 +47,12 @@ def list_public_listings(
 
 
 @router.get("/{listing_id}", response_model=ListingDetail)
-def get_public_listing(
+def get_listing_detail_authenticated(
     listing_id: UUID,
     db: Session = Depends(get_db),
+    _user: User = Depends(require_verified),
 ) -> ListingDetail:
-    # Authz: public read of a single active listing.
+    # Authz: verified users may read full listing detail including description.
     listing = get_listing_detail(db, listing_id)
     if listing is None or not listing.active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")

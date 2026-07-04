@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -16,6 +17,8 @@ from app.schemas.listing import (
     ListingUpdateRequest,
 )
 from app.services.listings import get_species_by_id
+from app.services.public_location import default_display_location, jitter_coordinates
+from app.services.slug import generate_listing_slug
 
 router = APIRouter(prefix="/owner", tags=["owner"])
 
@@ -168,19 +171,35 @@ def create_owner_listing(
     if animal is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid animal")
 
-    listing = Listing(
-        animal_id=payload.animal_id,
-        owner_id=owner.id,
-        activity_type=payload.activity_type,
-        price=payload.price,
-        availability=payload.availability,
-        friend_only_allowed=payload.friend_only_allowed,
-        active=payload.active,
+    display_location = payload.display_location or default_display_location(animal.address)
+    pub_lat, pub_lng = jitter_coordinates(animal.lat, animal.lng)
+
+    for _ in range(5):
+        listing = Listing(
+            animal_id=payload.animal_id,
+            owner_id=owner.id,
+            activity_type=payload.activity_type,
+            price=payload.price,
+            availability=payload.availability,
+            friend_only_allowed=payload.friend_only_allowed,
+            active=payload.active,
+            slug=generate_listing_slug(animal.name),
+            display_location=display_location,
+            public_lat=pub_lat,
+            public_lng=pub_lng,
+        )
+        db.add(listing)
+        try:
+            db.commit()
+            db.refresh(listing)
+            return listing
+        except IntegrityError:
+            db.rollback()
+
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Could not generate unique listing slug",
     )
-    db.add(listing)
-    db.commit()
-    db.refresh(listing)
-    return listing
 
 
 @router.get("/listings/{listing_id}", response_model=ListingResponse)

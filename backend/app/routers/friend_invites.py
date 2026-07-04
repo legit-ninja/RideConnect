@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.dependencies import require_owner, require_rider, require_verified
@@ -15,6 +15,7 @@ from app.schemas.friend_invite import (
     FriendInviteResponse,
     UpdateFriendInviteStatusRequest,
 )
+from app.services.threads import create_friend_invite_thread
 
 router = APIRouter(tags=["friend-invites"])
 
@@ -42,7 +43,6 @@ def create_friend_invite(
     db: Session = Depends(get_db),
     owner: User = Depends(require_owner),
 ) -> FriendInviteResponse:
-    # Authz: verified owners may invite specific riders by email (pairwise, not platform-wide).
     email = payload.invitee_email.lower().strip()
     if email == owner.email.lower():
         raise HTTPException(
@@ -54,7 +54,8 @@ def create_friend_invite(
         select(FriendInvite).where(
             FriendInvite.owner_id == owner.id,
             func.lower(FriendInvite.invitee_email) == email,
-            FriendInvite.status == FriendInviteStatus.PENDING,
+            FriendInvite.status == FriendInviteStatus.PENDING_OWNER_CONFIRM,
+            FriendInvite.invite_token_id.is_(None),
         )
     )
     if existing is not None:
@@ -75,7 +76,7 @@ def create_friend_invite(
         owner_id=owner.id,
         rider_id=rider_id,
         invitee_email=email,
-        status=FriendInviteStatus.PENDING,
+        status=FriendInviteStatus.PENDING_OWNER_CONFIRM,
     )
     db.add(invite)
     db.commit()
@@ -88,7 +89,6 @@ def list_owner_friend_invites(
     db: Session = Depends(get_db),
     owner: User = Depends(require_owner),
 ) -> FriendInviteListResponse:
-    # Authz: owners see invites they sent.
     invites = list(
         db.scalars(
             select(FriendInvite)
@@ -109,21 +109,23 @@ def owner_update_friend_invite(
     db: Session = Depends(get_db),
     owner: User = Depends(require_owner),
 ) -> FriendInviteResponse:
-    # Authz: owners may cancel their own pending invites.
     invite = db.get(FriendInvite, invite_id)
     if invite is None or invite.owner_id != owner.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
-    if payload.status != "cancelled":
+    if payload.status != "revoked":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Owners may only cancel invites",
+            detail="Owners may only revoke invites",
         )
-    if invite.status != FriendInviteStatus.PENDING:
+    if invite.status not in (
+        FriendInviteStatus.PENDING_OWNER_CONFIRM,
+        FriendInviteStatus.PENDING_GUARDIAN,
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite is no longer pending",
         )
-    invite.status = FriendInviteStatus.CANCELLED
+    invite.status = FriendInviteStatus.REVOKED
     db.commit()
     db.refresh(invite)
     return _invite_to_response(invite)
@@ -134,7 +136,6 @@ def list_rider_friend_invites(
     db: Session = Depends(get_db),
     rider: User = Depends(require_rider),
 ) -> FriendInviteListResponse:
-    # Authz: riders see invites addressed to their account email.
     invites = list(
         db.scalars(
             select(FriendInvite).where(
@@ -156,7 +157,6 @@ def rider_respond_friend_invite(
     db: Session = Depends(get_db),
     rider: User = Depends(require_rider),
 ) -> FriendInviteResponse:
-    # Authz: verified riders may accept or decline invites sent to them.
     if payload.status not in ("accepted", "declined"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -167,31 +167,40 @@ def rider_respond_friend_invite(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invite not found")
     if invite.rider_id not in (None, rider.id) and invite.invitee_email.lower() != rider.email.lower():
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your invite")
-    if invite.status != FriendInviteStatus.PENDING:
+    if invite.invite_token_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token-based invites are confirmed by the owner",
+        )
+    if invite.status != FriendInviteStatus.PENDING_OWNER_CONFIRM:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invite is no longer pending",
         )
     invite.rider_id = rider.id
-    invite.status = (
-        FriendInviteStatus.ACCEPTED
-        if payload.status == "accepted"
-        else FriendInviteStatus.DECLINED
-    )
     if payload.status == "accepted":
+        invite.status = FriendInviteStatus.ACTIVE
         invite.accepted_at = datetime.now(UTC)
+        invite.owner_confirmed_at = datetime.now(UTC)
+        create_friend_invite_thread(db, invite.id)
+    else:
+        invite.status = FriendInviteStatus.DECLINED
     db.commit()
     db.refresh(invite)
     return _invite_to_response(invite)
 
 
-def get_accepted_friend_invite(
+def get_active_friend_invite(
     db: Session, owner_id: UUID, rider_id: UUID
 ) -> FriendInvite | None:
     return db.scalar(
         select(FriendInvite).where(
             FriendInvite.owner_id == owner_id,
             FriendInvite.rider_id == rider_id,
-            FriendInvite.status == FriendInviteStatus.ACCEPTED,
+            FriendInvite.status == FriendInviteStatus.ACTIVE,
         )
     )
+
+
+# Backwards-compatible alias
+get_accepted_friend_invite = get_active_friend_invite

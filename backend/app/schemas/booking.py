@@ -12,7 +12,7 @@ class CreateBookingRequest(BaseModel):
 
 
 class UpdateBookingStatusRequest(BaseModel):
-    status: str = Field(pattern="^(approved|declined|cancelled)$")
+    status: str = Field(pattern="^(approved|declined|cancelled|completed)$")
 
 
 class BookingResponse(BaseModel):

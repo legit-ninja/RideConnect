@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     search_default_radius_km: float = 80.0
     seed_dev_data: bool = False
 
+    upload_root: str = "uploads"
+    public_upload_base_url: str = "http://localhost:8000/uploads"
+    photo_moderation_enabled: bool = False
+    frontend_base_url: str = "http://localhost:3000"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

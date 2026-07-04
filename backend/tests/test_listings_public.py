@@ -1,8 +1,8 @@
 from decimal import Decimal
 
-from app.models.animal import Animal
-from app.models.listing import ActivityType, Listing
+from app.models.listing import ActivityType
 from app.models.user import VerificationStatus
+from tests.helpers import seed_test_listing
 
 
 def test_public_listings_only_active(
@@ -16,33 +16,24 @@ def test_public_listings_only_active(
         is_owner=True,
         verification_status=VerificationStatus.VERIFIED,
     )
-    animal = Animal(
-        owner_id=owner.id,
-        species_id=horse_species.id,
-        name="Star",
-        lat=36.2168,
-        lng=-81.6746,
-        address="Boone, NC",
-        photo_urls=[],
-    )
-    db_session.add(animal)
-    db_session.flush()
-    active = Listing(
-        animal_id=animal.id,
-        owner_id=owner.id,
+    seed_test_listing(
+        db_session,
+        horse_species=horse_species,
+        owner=owner,
+        animal_name="Star",
         activity_type=ActivityType.TRAIL_RIDE,
         price=Decimal("50.00"),
         active=True,
     )
-    inactive = Listing(
-        animal_id=animal.id,
-        owner_id=owner.id,
+    seed_test_listing(
+        db_session,
+        horse_species=horse_species,
+        owner=owner,
+        animal_name="Star2",
         activity_type=ActivityType.LESSON,
         price=Decimal("40.00"),
         active=False,
     )
-    db_session.add_all([active, inactive])
-    db_session.commit()
 
     response = client.get("/listings")
     assert response.status_code == 200
@@ -62,36 +53,24 @@ def test_public_listings_filter_activity(
         is_owner=True,
         verification_status=VerificationStatus.VERIFIED,
     )
-    animal = Animal(
-        owner_id=owner.id,
-        species_id=horse_species.id,
-        name="Daisy",
-        lat=36.2168,
-        lng=-81.6746,
-        address="Boone, NC",
-        photo_urls=[],
+    seed_test_listing(
+        db_session,
+        horse_species=horse_species,
+        owner=owner,
+        animal_name="Daisy",
+        activity_type=ActivityType.TRAIL_RIDE,
+        price=Decimal("50.00"),
+        active=True,
     )
-    db_session.add(animal)
-    db_session.flush()
-    db_session.add_all(
-        [
-            Listing(
-                animal_id=animal.id,
-                owner_id=owner.id,
-                activity_type=ActivityType.TRAIL_RIDE,
-                price=Decimal("50.00"),
-                active=True,
-            ),
-            Listing(
-                animal_id=animal.id,
-                owner_id=owner.id,
-                activity_type=ActivityType.LESSON,
-                price=Decimal("40.00"),
-                active=True,
-            ),
-        ]
+    seed_test_listing(
+        db_session,
+        horse_species=horse_species,
+        owner=owner,
+        animal_name="Daisy2",
+        activity_type=ActivityType.LESSON,
+        price=Decimal("40.00"),
+        active=True,
     )
-    db_session.commit()
 
     response = client.get("/listings?activity_type=lesson")
     assert response.status_code == 200

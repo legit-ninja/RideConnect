@@ -49,16 +49,18 @@
   background: color-mix(in srgb, var(--primary) 15%, transparent);
   color: #f5e6c0;
   font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: var(--font-body-weight);
+  letter-spacing: var(--letter-spacing-nav);
   text-transform: uppercase;
   margin-bottom: var(--space-5);
 }
 
 .heroTitle {
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 600;
-  line-height: 1.05;
+  font-family: var(--font-heading);
+  font-size: clamp(2.5rem, 5vw, 3.125rem);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--letter-spacing-hero);
+  line-height: 1.2;
   margin-bottom: var(--space-5);
 }
 
@@ -85,8 +87,10 @@
   min-height: 48px;
   padding: 0 var(--space-6);
   border-radius: var(--radius-sm);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 600;
+  letter-spacing: var(--letter-spacing-button);
+  text-transform: uppercase;
 }
 
 .primaryButton {
@@ -124,7 +128,10 @@
 }
 
 .sectionTitle {
+  font-family: var(--font-heading);
   font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--letter-spacing-heading);
   margin-top: var(--space-2);
 }
 

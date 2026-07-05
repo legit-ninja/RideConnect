@@ -43,6 +43,25 @@
 
 .fontHeading {
   font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--letter-spacing-heading);
+}
+
+.textEyebrow {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-body-weight);
+  letter-spacing: var(--letter-spacing-nav);
+  text-transform: uppercase;
+}
+
+.textProductTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-body-weight);
+  letter-spacing: var(--letter-spacing-product-title);
+  text-transform: uppercase;
 }
 
 .textBalance {
@@ -52,8 +71,8 @@
 .sectionEyebrow {
   display: block;
   font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: var(--font-body-weight);
+  letter-spacing: var(--letter-spacing-nav);
   text-transform: uppercase;
   color: var(--primary);
   margin-bottom: var(--space-2);

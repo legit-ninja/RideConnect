@@ -63,8 +63,10 @@
 }
 
 .cardTitle {
-  font-size: var(--text-lg);
-  font-weight: 700;
+  font-size: var(--text-sm);
+  font-weight: var(--font-body-weight);
+  letter-spacing: var(--letter-spacing-product-title);
+  text-transform: uppercase;
 }
 
 .cardMeta {
@@ -189,8 +191,10 @@
   border-radius: var(--radius-sm);
   background: var(--primary);
   color: var(--primary-foreground);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 600;
+  letter-spacing: var(--letter-spacing-button);
+  text-transform: uppercase;
   cursor: pointer;
   text-decoration: none;
 }
@@ -557,7 +561,10 @@
 }
 
 .publicHeader h1 {
+  font-family: var(--font-heading);
   font-size: var(--text-2xl);
+  font-weight: var(--font-heading-weight);
+  letter-spacing: var(--letter-spacing-heading);
   margin-bottom: var(--space-2);
 }
 

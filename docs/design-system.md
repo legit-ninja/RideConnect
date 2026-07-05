@@ -13,7 +13,7 @@ Semantic tokens, theme modes, and visual conventions for the RideConnect fronten
 
 | Preference | `data-theme` on `<html>` | Behavior |
 |------------|--------------------------|----------|
-| Light | `light` | Warm stone palette, gold accent, Playfair headings |
+| Light | `light` | Warm stone palette, gold accent, Cormorant headings |
 | Dark | `dark` | Deep forest palette, lighter gold accent |
 | System | `light` or `dark` | Follows OS `prefers-color-scheme`; updates live when OS changes |
 | High contrast | `high-contrast` | Black/white with high-visibility accents (accessibility) |
@@ -60,11 +60,28 @@ Hex values are defined **only** in [`frontend/app/globals.css`](../frontend/app/
 
 ### Typography
 
+Inspired by [Equestrian Stockholm](https://equestrianstockholm.com/) — light sans body, editorial serif headings, wide-tracked uppercase nav and CTAs. Uses Google Font substitutes (no Adobe Typekit):
+
+| Role | Substitute for | Loaded via |
+|------|----------------|------------|
+| Body / UI | Proxima Nova → **Montserrat** (300, 500, 600) | `next/font/google` in `layout.tsx` |
+| Headings | Operetta 12 → **Cormorant Garamond** (400, 600) | `next/font/google` in `layout.tsx` |
+
 | Token | Value |
 |-------|-------|
-| `--font-sans` | Geist Sans + system fallback |
-| `--font-heading` | Playfair Display + Georgia fallback (headings) |
+| `--font-sans` | Montserrat + system fallback |
+| `--font-heading` | Cormorant Garamond + Georgia fallback |
+| `--font-body-weight` | 300 |
+| `--font-heading-weight` | 400 |
+| `--letter-spacing-body` | 0.03em |
+| `--letter-spacing-heading` | 0.03em |
+| `--letter-spacing-nav` | 0.08em (uppercase nav, eyebrows) |
+| `--letter-spacing-button` | 0.2em (uppercase CTAs) |
+| `--letter-spacing-product-title` | 0.08em (listing card titles) |
 | `--text-xs` … `--text-4xl` | 12, 14, 16, 18, 22, 28, 36, 48 px |
+| Body default size | 18px (`--text-lg`) |
+
+Utilities in `utilities.css`: `.textEyebrow`, `.textProductTitle`, `.fontHeading`, `.sectionEyebrow`.
 
 ### Radius
 

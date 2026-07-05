@@ -45,8 +45,10 @@
   border-radius: var(--radius-sm);
   background: var(--primary);
   color: var(--primary-foreground);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: 600;
+  letter-spacing: var(--letter-spacing-button);
+  text-transform: uppercase;
   cursor: pointer;
 }
 

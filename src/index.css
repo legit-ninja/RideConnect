@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 97%;
+    --foreground: 165 43% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 165 43% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 165 43% 8%;
+    --primary: 43 53% 45%;
+    --primary-foreground: 40 33% 97%;
+    --secondary: 40 20% 90%;
+    --secondary-foreground: 165 43% 12%;
+    --muted: 40 16% 92%;
+    --muted-foreground: 165 10% 35%;
+    --accent: 165 43% 8%;
+    --accent-foreground: 40 33% 97%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 40 33% 97%;
+    --border: 40 16% 85%;
+    --input: 40 16% 85%;
+    --ring: 43 53% 45%;
+    --chart-1: 43 53% 45%;
+    --chart-2: 165 43% 25%;
+    --chart-3: 200 40% 30%;
+    --chart-4: 15 55% 50%;
+    --chart-5: 280 40% 55%;
+    --radius: 0.5rem;
+    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --sidebar-background: 40 33% 97%;
+    --sidebar-foreground: 165 43% 12%;
+    --sidebar-primary: 43 53% 45%;
+    --sidebar-primary-foreground: 40 33% 97%;
+    --sidebar-accent: 40 16% 92%;
+    --sidebar-accent-foreground: 165 43% 12%;
+    --sidebar-border: 40 16% 85%;
+    --sidebar-ring: 43 53% 45%;
+  }
+
+  .dark {
+    --background: 165 43% 8%;
+    --foreground: 40 33% 94%;
+    --card: 165 38% 11%;
+    --card-foreground: 40 33% 94%;
+    --popover: 165 38% 11%;
+    --popover-foreground: 40 33% 94%;
+    --primary: 43 53% 55%;
+    --primary-foreground: 165 43% 8%;
+    --secondary: 165 25% 14%;
+    --secondary-foreground: 40 33% 94%;
+    --muted: 165 25% 14%;
+    --muted-foreground: 40 12% 62%;
+    --accent: 165 25% 16%;
+    --accent-foreground: 40 33% 94%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 40 33% 94%;
+    --border: 165 20% 18%;
+    --input: 165 20% 18%;
+    --ring: 43 53% 55%;
+    --chart-1: 43 53% 55%;
+    --chart-2: 165 43% 35%;
+    --chart-3: 200 40% 40%;
+    --chart-4: 15 55% 55%;
+    --chart-5: 280 40% 60%;
+    --sidebar-background: 165 43% 8%;
+    --sidebar-foreground: 40 33% 94%;
+    --sidebar-primary: 43 53% 55%;
+    --sidebar-primary-foreground: 165 43% 8%;
+    --sidebar-accent: 165 25% 14%;
+    --sidebar-accent-foreground: 40 33% 94%;
+    --sidebar-border: 165 20% 18%;
+    --sidebar-ring: 43 53% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+@layer utilities {
+  .font-heading {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .gold-gradient {
+    background: linear-gradient(135deg, hsl(43, 53%, 55%) 0%, hsl(38, 50%, 40%) 100%);
+  }
+  .hero-overlay {
+    background: linear-gradient(180deg, rgba(13, 31, 26, 0.3) 0%, rgba(13, 31, 26, 0.75) 60%, rgba(13, 31, 26, 0.95) 100%);
+  }
+  .card-hover {
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .card-hover:hover {
+    transform: translateY(-4px);
+  }
+  .scroll-fade-in {
+    animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}

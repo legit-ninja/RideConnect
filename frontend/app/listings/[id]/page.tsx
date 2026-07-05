@@ -9,32 +9,46 @@ import { EmptyState } from "@/components/marketplace/EmptyState";
 import { InlineAlert } from "@/components/marketplace/InlineAlert";
 import { ListingImage } from "@/components/marketplace/ListingImage";
 import { LoadingState } from "@/components/marketplace/LoadingState";
-import { activityTypeLabel } from "@/components/marketplace/marketplaceLabels";
+import { activityTypeLabel, ridingStyleLabel } from "@/components/marketplace/marketplaceLabels";
 import styles from "@/components/marketplace/marketplace.module.css";
 import {
   ApiError,
+  AvailabilitySlot,
   ListingDetail,
   User,
   createBooking,
   fetchCurrentUser,
   fetchListing,
+  fetchListingOpenSlots,
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+
+const INQUIRY_NOTE_MIN_LENGTH = 10;
+
+function formatSlotRange(start: string, end: string): string {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  return `${startDate.toLocaleDateString()} · ${startDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} – ${endDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
 
 export default function ListingDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const id = params.id as string;
-  const slotId = searchParams.get("slot");
+  const slotIdFromQuery = searchParams.get("slot");
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [openSlots, setOpenSlots] = useState<AvailabilitySlot[] | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(slotIdFromQuery);
+  const [showContactForm, setShowContactForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetchListing(id)
+    const token = getToken();
+    fetchListing(id, token)
       .then(setListing)
       .catch(() => {
         setError("Listing not found.");
@@ -45,36 +59,71 @@ export default function ListingDetailPage() {
     const token = getToken();
     if (!token) {
       setUser(null);
+      setOpenSlots(null);
       return;
     }
     fetchCurrentUser(token)
-      .then(setUser)
-      .catch(() => setUser(null));
-  }, []);
+      .then((currentUser) => {
+        setUser(currentUser);
+        if (currentUser.is_rider && currentUser.verification_status === "verified") {
+          return fetchListingOpenSlots(token, id).then(setOpenSlots);
+        }
+        setOpenSlots(null);
+        return undefined;
+      })
+      .catch(() => {
+        setUser(null);
+        setOpenSlots(null);
+      });
+  }, [id]);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (slotIdFromQuery) {
+      setSelectedSlotId(slotIdFromQuery);
+      setShowContactForm(false);
+    }
+  }, [slotIdFromQuery]);
+
+  async function handleSlotBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const token = getToken();
-    if (!token || !listing) return;
+    if (!token || !listing || !selectedSlotId) return;
     setBusy(true);
     setSubmitError(null);
-    const form = new FormData(event.currentTarget);
-    const scheduledAt = String(form.get("scheduled_at") || "");
-    const note = String(form.get("note") || "");
+    const note = String(new FormData(event.currentTarget).get("note") || "");
     try {
       await createBooking(token, {
         listing_id: listing.id,
-        scheduled_at: scheduledAt || undefined,
-        availability_slot_id: slotId || undefined,
+        availability_slot_id: selectedSlotId,
         note: note || undefined,
       });
       setSuccess(true);
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        setSubmitError(err.message);
-      } else {
-        setSubmitError("Unable to submit booking request.");
-      }
+      setSubmitError(err instanceof ApiError ? err.message : "Unable to submit booking request.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleContactSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const token = getToken();
+    if (!token || !listing) return;
+    const note = String(new FormData(event.currentTarget).get("note") || "").trim();
+    if (note.length < INQUIRY_NOTE_MIN_LENGTH) {
+      setSubmitError(`Please enter at least ${INQUIRY_NOTE_MIN_LENGTH} characters.`);
+      return;
+    }
+    setBusy(true);
+    setSubmitError(null);
+    try {
+      await createBooking(token, {
+        listing_id: listing.id,
+        note,
+      });
+      setSuccess(true);
+    } catch (err: unknown) {
+      setSubmitError(err instanceof ApiError ? err.message : "Unable to send message.");
     } finally {
       setBusy(false);
     }
@@ -104,18 +153,19 @@ export default function ListingDetailPage() {
   const photoCount = listing.photo_urls.length;
   const price = Number(listing.price);
   const isFriendOnly = listing.friend_only_allowed;
+  const hasOpenSlots = openSlots !== null && openSlots.length > 0;
 
   function renderBookingSection() {
     if (success) {
       return (
         <InlineAlert variant="success">
-          Booking request submitted.{" "}
+          Your request was submitted on RideConnect.{" "}
           <Link href="/rider/bookings">View my bookings</Link>
         </InlineAlert>
       );
     }
 
-    if (user === undefined) {
+    if (user === undefined || (user?.is_rider && openSlots === null && user.verification_status === "verified")) {
       return <LoadingState variant="table" count={2} label="Loading account" />;
     }
 
@@ -150,30 +200,51 @@ export default function ListingDetailPage() {
       return <BlockedAction user={user} action="request rides" />;
     }
 
-    if (isFriendOnly) {
+    const friendNotice = isFriendOnly ? (
+      <InlineAlert variant="info">
+        This is a verified-friends-only ride. The host must send you a friend invite and you
+        must accept before you can request this ride.
+      </InlineAlert>
+    ) : null;
+
+    if (showContactForm || !hasOpenSlots) {
       return (
         <div className={styles.detailSection}>
-          <InlineAlert variant="info">
-            This is a verified-friends-only ride. The owner must send you a friend invite and
-            you must accept before you can request this ride.
-          </InlineAlert>
-          {slotId ? (
+          {friendNotice}
+          {!hasOpenSlots ? (
             <InlineAlert variant="info">
-              You are requesting a specific open slot from the calendar.
+              No times available right now — send a message and the host will get back to you on
+              the platform.{" "}
+              <Link href="/calendar">Browse the calendar</Link> for other listings.
             </InlineAlert>
-          ) : null}
-          <form onSubmit={handleSubmit}>
+          ) : (
+            <p className={styles.cardMeta}>
+              Ask a question before booking, or{" "}
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                onClick={() => setShowContactForm(false)}
+              >
+                return to available times
+              </button>
+              .
+            </p>
+          )}
+          <form onSubmit={handleContactSubmit}>
             <label>
-              Preferred date (optional)
-              <input name="scheduled_at" type="datetime-local" />
-            </label>
-            <label>
-              Note to owner (optional)
-              <textarea name="note" rows={3} maxLength={2000} />
+              Message to host (required)
+              <textarea
+                name="note"
+                rows={4}
+                maxLength={2000}
+                required
+                minLength={INQUIRY_NOTE_MIN_LENGTH}
+                placeholder="Introduce yourself and what you are looking for…"
+              />
             </label>
             {submitError ? <InlineAlert variant="error">{submitError}</InlineAlert> : null}
             <button className={styles.button} type="submit" disabled={busy}>
-              {busy ? "Submitting…" : "Request ride"}
+              {busy ? "Sending…" : "Contact host"}
             </button>
           </form>
         </div>
@@ -182,26 +253,47 @@ export default function ListingDetailPage() {
 
     return (
       <div className={styles.detailSection}>
-        {slotId ? (
+        {friendNotice}
+        {slotIdFromQuery ? (
           <InlineAlert variant="info">
-            You are requesting a specific open slot from the calendar. Submit below to hold that
-            time with the owner.
+            You selected a time from the calendar. Confirm below to request that slot.
           </InlineAlert>
         ) : null}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSlotBooking}>
+          <fieldset className={styles.slotList}>
+            <legend>Choose an available time</legend>
+            {openSlots?.map((slot) => (
+              <label key={slot.id} className={styles.slotRow}>
+                <input
+                  type="radio"
+                  name="availability_slot_id"
+                  value={slot.id}
+                  checked={selectedSlotId === slot.id}
+                  onChange={() => setSelectedSlotId(slot.id)}
+                  required
+                />
+                {formatSlotRange(slot.start_at, slot.end_at)}
+              </label>
+            ))}
+          </fieldset>
           <label>
-            Preferred date (optional)
-            <input name="scheduled_at" type="datetime-local" />
-          </label>
-          <label>
-            Note to owner (optional)
+            Note to host (optional)
             <textarea name="note" rows={3} maxLength={2000} />
           </label>
           {submitError ? <InlineAlert variant="error">{submitError}</InlineAlert> : null}
-          <button className={styles.button} type="submit" disabled={busy}>
+          <button className={styles.button} type="submit" disabled={busy || !selectedSlotId}>
             {busy ? "Submitting…" : "Request ride"}
           </button>
         </form>
+        <p className={styles.cardMeta}>
+          <button
+            type="button"
+            className={styles.buttonSecondary}
+            onClick={() => setShowContactForm(true)}
+          >
+            Ask a question first
+          </button>
+        </p>
       </div>
     );
   }
@@ -216,6 +308,15 @@ export default function ListingDetailPage() {
         <p className={styles.cardMeta}>+{photoCount - 1} more photo(s)</p>
       ) : null}
       <h1>{listing.animal_name}</h1>
+      {listing.riding_styles.length > 0 ? (
+        <div className={styles.chipRow}>
+          {listing.riding_styles.map((style) => (
+            <span key={style} className={styles.chip}>
+              {ridingStyleLabel(style)}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <p>
         {activityTypeLabel(listing.activity_type)}
         {listing.breed ? ` · ${listing.breed}` : ""}
@@ -237,7 +338,7 @@ export default function ListingDetailPage() {
       </div>
       {listing.availability ? (
         <div className={styles.detailSection}>
-          <h2>Availability</h2>
+          <h2>Availability notes</h2>
           <p>{listing.availability}</p>
         </div>
       ) : null}

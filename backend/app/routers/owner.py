@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.dependencies import require_owner
+from app.dependencies import require_host
 from app.models.animal import Animal
 from app.models.listing import Listing
 from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
@@ -26,6 +26,7 @@ from app.schemas.listing import (
 from app.services.events import log_event
 from app.services.listings import get_species_by_id
 from app.services.public_location import default_display_location, jitter_coordinates
+from app.services.riding_styles import require_horse_riding_styles
 from app.services.slug import generate_listing_slug
 
 router = APIRouter(prefix="/owner", tags=["owner"])
@@ -46,13 +47,13 @@ def _get_owner_listing(db: Session, owner_id: UUID, listing_id: UUID) -> Listing
 @router.get("/animals", response_model=list[AnimalResponse])
 def list_owner_animals(
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> list[Animal]:
-    # Authz: verified owner may list only their own animals.
+    # Authz: verified host (owner or trainer) may list only their own animals.
     return list(
         db.scalars(
             select(Animal)
-            .where(Animal.owner_id == owner.id)
+            .where(Animal.owner_id == host.id)
             .order_by(Animal.created_at.desc())
         ).all()
     )
@@ -62,15 +63,19 @@ def list_owner_animals(
 def create_owner_animal(
     payload: AnimalCreateRequest,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> Animal:
     # Authz: verified owner may create animals they own.
     species = get_species_by_id(db, payload.species_id)
     if species is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid species")
 
+    riding_styles = require_horse_riding_styles(
+        species, [style.value for style in payload.riding_styles]
+    )
+
     animal = Animal(
-        owner_id=owner.id,
+        owner_id=host.id,
         species_id=payload.species_id,
         name=payload.name,
         breed=payload.breed,
@@ -80,6 +85,7 @@ def create_owner_animal(
         lng=payload.lng,
         address=payload.address,
         photo_urls=payload.photo_urls,
+        riding_styles=riding_styles,
     )
     db.add(animal)
     db.commit()
@@ -91,10 +97,10 @@ def create_owner_animal(
 def get_owner_animal(
     animal_id: UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> Animal:
     # Authz: verified owner may read only their own animal.
-    animal = _get_owner_animal(db, owner.id, animal_id)
+    animal = _get_owner_animal(db, host.id, animal_id)
     if animal is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found")
     return animal
@@ -105,17 +111,18 @@ def update_owner_animal(
     animal_id: UUID,
     payload: AnimalUpdateRequest,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> Animal:
     # Authz: verified owner may update only their own animal.
-    animal = _get_owner_animal(db, owner.id, animal_id)
+    animal = _get_owner_animal(db, host.id, animal_id)
     if animal is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found")
 
+    species = get_species_by_id(db, payload.species_id) if payload.species_id is not None else get_species_by_id(db, animal.species_id)
+    if species is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid species")
+
     if payload.species_id is not None:
-        species = get_species_by_id(db, payload.species_id)
-        if species is None:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid species")
         animal.species_id = payload.species_id
     if payload.name is not None:
         animal.name = payload.name
@@ -133,6 +140,15 @@ def update_owner_animal(
         animal.address = payload.address
     if payload.photo_urls is not None:
         animal.photo_urls = payload.photo_urls
+    if payload.riding_styles is not None:
+        animal.riding_styles = require_horse_riding_styles(
+            species, [style.value for style in payload.riding_styles]
+        )
+    elif species.name == "horse" and not (animal.riding_styles or []):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Horses require at least one riding style (western, english, or therapy)",
+        )
 
     db.commit()
     db.refresh(animal)
@@ -143,10 +159,10 @@ def update_owner_animal(
 def delete_owner_animal(
     animal_id: UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> None:
     # Authz: verified owner may delete only their own animal.
-    animal = _get_owner_animal(db, owner.id, animal_id)
+    animal = _get_owner_animal(db, host.id, animal_id)
     if animal is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found")
     db.delete(animal)
@@ -156,13 +172,13 @@ def delete_owner_animal(
 @router.get("/listings", response_model=list[ListingResponse])
 def list_owner_listings(
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> list[Listing]:
     # Authz: verified owner may list only their own listings (including inactive).
     return list(
         db.scalars(
             select(Listing)
-            .where(Listing.owner_id == owner.id)
+            .where(Listing.owner_id == host.id)
             .order_by(Listing.created_at.desc())
         ).all()
     )
@@ -172,10 +188,10 @@ def list_owner_listings(
 def create_owner_listing(
     payload: ListingCreateRequest,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> Listing:
     # Authz: verified owner may create listings for animals they own.
-    animal = _get_owner_animal(db, owner.id, payload.animal_id)
+    animal = _get_owner_animal(db, host.id, payload.animal_id)
     if animal is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid animal")
 
@@ -185,7 +201,7 @@ def create_owner_listing(
     for _ in range(5):
         listing = Listing(
             animal_id=payload.animal_id,
-            owner_id=owner.id,
+            owner_id=host.id,
             activity_type=payload.activity_type,
             price=payload.price,
             availability=payload.availability,
@@ -214,10 +230,10 @@ def create_owner_listing(
 def get_owner_listing(
     listing_id: UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> Listing:
     # Authz: verified owner may read only their own listing.
-    listing = _get_owner_listing(db, owner.id, listing_id)
+    listing = _get_owner_listing(db, host.id, listing_id)
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
     return listing
@@ -228,10 +244,10 @@ def update_owner_listing(
     listing_id: UUID,
     payload: ListingUpdateRequest,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> Listing:
     # Authz: verified owner may update only their own listing.
-    listing = _get_owner_listing(db, owner.id, listing_id)
+    listing = _get_owner_listing(db, host.id, listing_id)
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
 
@@ -255,10 +271,10 @@ def update_owner_listing(
 def delete_owner_listing(
     listing_id: UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> None:
     # Authz: verified owner may delete only their own listing.
-    listing = _get_owner_listing(db, owner.id, listing_id)
+    listing = _get_owner_listing(db, host.id, listing_id)
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
     db.delete(listing)
@@ -271,10 +287,10 @@ def list_listing_slots(
     from_date: datetime | None = Query(default=None, alias="from"),
     to_date: datetime | None = Query(default=None, alias="to"),
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> list[ListingAvailabilitySlot]:
     # Authz: verified owner may list slots for their own listing.
-    listing = _get_owner_listing(db, owner.id, listing_id)
+    listing = _get_owner_listing(db, host.id, listing_id)
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
 
@@ -299,10 +315,10 @@ def create_listing_slot(
     listing_id: UUID,
     payload: CreateAvailabilitySlotRequest,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> ListingAvailabilitySlot:
     # Authz: verified owner may create slots for their own listing.
-    listing = _get_owner_listing(db, owner.id, listing_id)
+    listing = _get_owner_listing(db, host.id, listing_id)
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
     if payload.start_at <= datetime.now(UTC):
@@ -323,7 +339,7 @@ def create_listing_slot(
     log_event(
         db,
         "slot_created",
-        user_id=owner.id,
+        user_id=host.id,
         payload={"slot_id": str(slot.id), "listing_id": str(listing.id)},
     )
     db.commit()
@@ -340,10 +356,10 @@ def update_listing_slot(
     slot_id: UUID,
     payload: UpdateAvailabilitySlotRequest,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> ListingAvailabilitySlot:
     # Authz: verified owner may update open/blocked slots on their listing.
-    listing = _get_owner_listing(db, owner.id, listing_id)
+    listing = _get_owner_listing(db, host.id, listing_id)
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
 
@@ -371,7 +387,7 @@ def update_listing_slot(
     log_event(
         db,
         "slot_updated",
-        user_id=owner.id,
+        user_id=host.id,
         payload={"slot_id": str(slot.id), "listing_id": str(listing.id)},
     )
     db.commit()
@@ -387,10 +403,10 @@ def delete_listing_slot(
     listing_id: UUID,
     slot_id: UUID,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> None:
     # Authz: verified owner may delete open/blocked slots on their listing.
-    listing = _get_owner_listing(db, owner.id, listing_id)
+    listing = _get_owner_listing(db, host.id, listing_id)
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
 
@@ -411,7 +427,7 @@ def delete_listing_slot(
     log_event(
         db,
         "slot_deleted",
-        user_id=owner.id,
+        user_id=host.id,
         payload={"slot_id": str(slot.id), "listing_id": str(listing.id)},
     )
     db.delete(slot)

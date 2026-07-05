@@ -105,10 +105,10 @@ export function ListingSlotsSection({ listingId }: ListingSlotsSectionProps) {
 
   return (
     <section className={styles.shareBox}>
-      <h2>Availability slots</h2>
+      <h2>Availability</h2>
       <p className={styles.cardMeta}>
-        Add bookable time windows riders will see on the calendar. General notes stay in the
-        availability field above.
+        Add bookable time windows riders can choose when requesting a ride. General notes stay in
+        the availability field above.
       </p>
       {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}
       {success ? <InlineAlert variant="success">{success}</InlineAlert> : null}

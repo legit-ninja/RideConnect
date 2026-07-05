@@ -21,6 +21,7 @@ function RegisterForm() {
   const [lastName, setLastName] = useState("");
   const [isRider, setIsRider] = useState(true);
   const [isOwner, setIsOwner] = useState(true);
+  const [isTrainer, setIsTrainer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +41,7 @@ function RegisterForm() {
           last_name: lastName,
           is_rider: isRider,
           is_owner: isOwner,
+          is_trainer: isTrainer,
         },
         { src: src ?? undefined, ref: ref ?? undefined },
       );
@@ -58,7 +60,7 @@ function RegisterForm() {
   return (
     <div className={styles.authForm}>
       <h1>Create account</h1>
-      <p>Register as a rider, owner, or both. Verification is required before ride activity.</p>
+      <p>Register as a rider, owner, trainer, or any combination. Verification is required before ride activity.</p>
       <form className={styles.authForm} onSubmit={handleSubmit}>
         <div className={styles.field}>
           <label htmlFor="first_name">First name</label>
@@ -117,6 +119,14 @@ function RegisterForm() {
               onChange={(e) => setIsOwner(e.target.checked)}
             />
             I am an owner
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={isTrainer}
+              onChange={(e) => setIsTrainer(e.target.checked)}
+            />
+            I am a trainer
           </label>
         </div>
         {error ? <p className={styles.error}>{error}</p> : null}

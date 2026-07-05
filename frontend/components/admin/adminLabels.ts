@@ -12,10 +12,13 @@ const ACTIVITY_LABEL: Record<string, string> = {
   day_rental: "Day rental",
 };
 
-export function formatRoles(user: Pick<AdminUserSummary, "is_rider" | "is_owner">): string {
+export function formatRoles(
+  user: Pick<AdminUserSummary, "is_rider" | "is_owner" | "is_trainer">,
+): string {
   const roles: string[] = [];
   if (user.is_rider) roles.push("Rider");
   if (user.is_owner) roles.push("Owner");
+  if (user.is_trainer) roles.push("Trainer");
   return roles.length > 0 ? roles.join(" · ") : "—";
 }
 

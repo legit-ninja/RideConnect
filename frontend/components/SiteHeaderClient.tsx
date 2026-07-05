@@ -127,7 +127,8 @@ export function SiteHeaderClient() {
 
     if (user) {
       const showCalendar =
-        user.verification_status === "verified" && (user.is_rider || user.is_owner);
+        user.verification_status === "verified" &&
+        (user.is_rider || user.is_owner || user.is_trainer);
       return (
         <div className={layoutStyles.navActions}>
           {!compact ? (
@@ -231,7 +232,7 @@ export function SiteHeaderClient() {
           ) : null}
           {user &&
           user.verification_status === "verified" &&
-          (user.is_rider || user.is_owner) ? (
+          (user.is_rider || user.is_owner || user.is_trainer) ? (
             <Link href="/calendar" className={navLinkClass()}>
               Calendar
             </Link>

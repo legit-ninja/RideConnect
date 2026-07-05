@@ -151,9 +151,11 @@ export function UserMenu({ user: userProp }: UserMenuProps) {
             </>
           ) : null}
 
-          {user.is_owner ? (
+          {user.is_owner || user.is_trainer ? (
             <>
-              <div className={styles.itemGroupLabel}>Owner</div>
+              <div className={styles.itemGroupLabel}>
+                {user.is_trainer && !user.is_owner ? "Trainer" : "Host"}
+              </div>
               <Link href="/owner/listings" className={styles.item} onClick={closeMenu}>
                 Manage listings
               </Link>
@@ -163,6 +165,12 @@ export function UserMenu({ user: userProp }: UserMenuProps) {
               <Link href="/owner/bookings" className={styles.item} onClick={closeMenu}>
                 Booking inbox
               </Link>
+            </>
+          ) : null}
+
+          {user.is_owner ? (
+            <>
+              <div className={styles.itemGroupLabel}>Owner</div>
               <Link href="/owner/friends" className={styles.item} onClick={closeMenu}>
                 Verified friends
               </Link>

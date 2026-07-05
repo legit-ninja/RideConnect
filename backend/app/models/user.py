@@ -26,6 +26,7 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_rider: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_owner: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_trainer: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     verification_status: Mapped[VerificationStatus] = mapped_column(
         Enum(

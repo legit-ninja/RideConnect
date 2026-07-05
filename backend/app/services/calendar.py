@@ -213,6 +213,24 @@ def build_calendar_response(
     )
 
 
+def get_open_slots_for_listing(
+    db: Session, listing_id: UUID, *, now: datetime | None = None
+) -> list[ListingAvailabilitySlot]:
+    if now is None:
+        now = datetime.now(UTC)
+    return list(
+        db.scalars(
+            select(ListingAvailabilitySlot)
+            .where(
+                ListingAvailabilitySlot.listing_id == listing_id,
+                ListingAvailabilitySlot.status == SlotStatus.OPEN,
+                ListingAvailabilitySlot.start_at > now,
+            )
+            .order_by(ListingAvailabilitySlot.start_at.asc())
+        ).all()
+    )
+
+
 def get_slot_for_booking(
     db: Session, slot_id: UUID, listing_id: UUID
 ) -> ListingAvailabilitySlot | None:

@@ -57,6 +57,7 @@ def create_user(
     email: str,
     is_admin: bool = False,
     is_owner: bool = False,
+    is_trainer: bool = False,
     is_rider: bool = True,
     verification_status: VerificationStatus = VerificationStatus.UNVERIFIED,
 ) -> User:
@@ -67,6 +68,7 @@ def create_user(
         last_name="User",
         is_rider=is_rider,
         is_owner=is_owner,
+        is_trainer=is_trainer,
         is_admin=is_admin,
         verification_status=verification_status,
     )

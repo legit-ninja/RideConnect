@@ -13,6 +13,7 @@ class RegisterRequest(BaseModel):
     last_name: str = Field(min_length=1, max_length=100)
     is_rider: bool = True
     is_owner: bool = True
+    is_trainer: bool = False
 
 
 class LoginRequest(BaseModel):
@@ -32,6 +33,7 @@ class UserResponse(BaseModel):
     last_name: str
     is_rider: bool
     is_owner: bool
+    is_trainer: bool
     is_admin: bool
     verification_status: VerificationStatus
     is_minor: bool

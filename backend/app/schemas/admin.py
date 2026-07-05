@@ -28,6 +28,7 @@ class AdminUserSummary(BaseModel):
     email: str
     is_rider: bool
     is_owner: bool
+    is_trainer: bool
     is_admin: bool
     verification_status: VerificationStatus
     is_minor: bool
@@ -96,6 +97,7 @@ class UpdateVerificationRequest(BaseModel):
 class UpdateUserRolesRequest(BaseModel):
     is_rider: bool
     is_owner: bool
+    is_trainer: bool
 
 
 class AdminAuditLogEntry(BaseModel):

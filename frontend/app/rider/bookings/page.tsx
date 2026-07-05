@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { BlockedAction } from "@/components/marketplace/VerificationBanner";
+import { BookingThreadPanel } from "@/components/marketplace/BookingThreadPanel";
 import { EmptyState } from "@/components/marketplace/EmptyState";
 import { InlineAlert } from "@/components/marketplace/InlineAlert";
 import { LoadingState } from "@/components/marketplace/LoadingState";
@@ -23,6 +24,7 @@ export default function RiderBookingsPage() {
   const [bookings, setBookings] = useState<BookingRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reviewBusy, setReviewBusy] = useState<string | null>(null);
+  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
 
   async function submitReview(bookingId: string, form: HTMLFormElement) {
     const token = getToken();
@@ -102,6 +104,7 @@ export default function RiderBookingsPage() {
                   <th>Owner</th>
                   <th>Type</th>
                   <th>Status</th>
+                  <th>Scheduled</th>
                   <th>Requested</th>
                 </tr>
               </thead>
@@ -120,7 +123,32 @@ export default function RiderBookingsPage() {
                     <td>{booking.payment_type === "free" ? "Free (friend)" : "Paid"}</td>
                     <td>{bookingStatusLabel(booking.status)}</td>
                     <td>
+                      {booking.scheduled_at
+                        ? new Date(booking.scheduled_at).toLocaleString()
+                        : "—"}
+                    </td>
+                    <td>
                       {new Date(booking.requested_at).toLocaleDateString()}
+                      {booking.thread_id ? (
+                        <div className={styles.cardMetaSpaced}>
+                          <button
+                            type="button"
+                            className={styles.buttonSecondary}
+                            onClick={() =>
+                              setExpandedThreadId((current) =>
+                                current === booking.thread_id ? null : booking.thread_id ?? null,
+                              )
+                            }
+                          >
+                            {expandedThreadId === booking.thread_id
+                              ? "Hide messages"
+                              : "View messages"}
+                          </button>
+                          {expandedThreadId === booking.thread_id ? (
+                            <BookingThreadPanel threadId={booking.thread_id} />
+                          ) : null}
+                        </div>
+                      ) : null}
                       {booking.status === "completed" ? (
                         <form
                           className={styles.formPage}

@@ -84,6 +84,26 @@ def require_owner(current_user: User = Depends(require_verified)) -> User:
     return current_user
 
 
+def require_trainer(current_user: User = Depends(require_verified)) -> User:
+    # Authz: trainer routes require verified account with is_trainer=True.
+    if not current_user.is_trainer:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Trainer access required",
+        )
+    return current_user
+
+
+def require_host(current_user: User = Depends(require_verified)) -> User:
+    # Authz: host routes (listings, animals, slots) require verified owner or trainer.
+    if not current_user.is_owner and not current_user.is_trainer:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Host access required",
+        )
+    return current_user
+
+
 def require_rider(current_user: User = Depends(require_verified)) -> User:
     # Authz: rider booking routes require verified account with is_rider=True.
     if not current_user.is_rider:

@@ -28,7 +28,7 @@ export default function OwnerAnimalsPage() {
     fetchCurrentUser(token)
       .then((currentUser) => {
         setUser(currentUser);
-        if (!currentUser.is_owner) {
+        if (!currentUser.is_owner && !currentUser.is_trainer) {
           router.replace("/dashboard");
           return null;
         }

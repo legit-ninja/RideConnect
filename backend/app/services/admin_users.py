@@ -18,6 +18,7 @@ def user_to_summary(user: User) -> AdminUserSummary:
         email=user.email,
         is_rider=user.is_rider,
         is_owner=user.is_owner,
+        is_trainer=user.is_trainer,
         is_admin=user.is_admin,
         verification_status=user.verification_status,
         is_minor=user.is_minor,

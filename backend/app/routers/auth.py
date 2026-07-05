@@ -53,6 +53,7 @@ def register(
         last_name=payload.last_name.strip(),
         is_rider=payload.is_rider,
         is_owner=payload.is_owner,
+        is_trainer=payload.is_trainer,
         is_admin=False,
     )
     db.add(user)

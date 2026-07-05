@@ -6,10 +6,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
-from app.dependencies import require_admin, require_owner, require_rider, require_verified
+from app.dependencies import require_admin, require_host, require_rider, require_verified
 from app.models.booking_request import BookingRequest, BookingStatus, PaymentType
 from app.models.listing import Listing
 from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
+from app.models.message import Message
+from app.models.thread import Thread
 from app.models.user import User
 from app.routers.friend_invites import get_active_friend_invite
 from app.schemas.booking import (
@@ -21,11 +23,20 @@ from app.schemas.booking import (
 
 from app.services.calendar import get_slot_for_booking, mark_slot_booked, release_slot
 from app.services.events import log_event
+from app.services.threads import create_booking_thread
 
 router = APIRouter(tags=["bookings"])
 
+INQUIRY_NOTE_MIN_LENGTH = 10
 
-def _booking_to_response(booking: BookingRequest) -> BookingResponse:
+
+def _thread_id_for_booking(db: Session, booking_id: UUID) -> UUID | None:
+    return db.scalar(
+        select(Thread.id).where(Thread.booking_request_id == booking_id)
+    )
+
+
+def _booking_to_response(db: Session, booking: BookingRequest) -> BookingResponse:
     listing = booking.listing
     return BookingResponse(
         id=booking.id,
@@ -44,6 +55,7 @@ def _booking_to_response(booking: BookingRequest) -> BookingResponse:
         requested_at=booking.requested_at,
         listing_price=listing.price,
         activity_type=listing.activity_type.value,
+        thread_id=_thread_id_for_booking(db, booking.id),
     )
 
 
@@ -85,6 +97,17 @@ def create_booking(
             detail="Cannot book your own listing",
         )
 
+    is_inquiry = payload.availability_slot_id is None
+    if is_inquiry:
+        note = (payload.note or "").strip()
+        if len(note) < INQUIRY_NOTE_MIN_LENGTH:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Inquiry requires a message of at least {INQUIRY_NOTE_MIN_LENGTH} characters",
+            )
+    else:
+        note = payload.note
+
     payment_type = PaymentType.FREE if listing.friend_only_allowed else PaymentType.PAID
     friend_invite_id = None
 
@@ -96,12 +119,9 @@ def create_booking(
                 detail="Verified friend connection required for this listing",
             )
         friend_invite_id = invite.id
-        initial_status = BookingStatus.PENDING_OWNER
-    else:
-        initial_status = BookingStatus.PENDING_PAYMENT
 
     slot: ListingAvailabilitySlot | None = None
-    scheduled_at = payload.scheduled_at
+    scheduled_at = None
     if payload.availability_slot_id is not None:
         slot = get_slot_for_booking(db, payload.availability_slot_id, listing.id)
         if slot is None:
@@ -118,6 +138,13 @@ def create_booking(
                 detail="Availability slot must be in the future",
             )
         scheduled_at = slot.start_at
+        initial_status = (
+            BookingStatus.PENDING_OWNER
+            if payment_type == PaymentType.FREE
+            else BookingStatus.PENDING_PAYMENT
+        )
+    else:
+        initial_status = BookingStatus.PENDING_OWNER
 
     booking = BookingRequest(
         listing_id=listing.id,
@@ -128,17 +155,23 @@ def create_booking(
         status=initial_status,
         scheduled_at=scheduled_at,
         availability_slot_id=payload.availability_slot_id,
-        note=payload.note,
+        note=note,
     )
     db.add(booking)
     if slot is not None:
         slot.status = SlotStatus.HELD
     db.flush()
+
+    thread = create_booking_thread(db, booking.id)
+    message_body = (note if is_inquiry else (payload.note or "")).strip()
+    if message_body:
+        db.add(Message(thread_id=thread.id, sender_id=rider.id, body=message_body))
+
     log_event(db, "booking_requested", user_id=rider.id, payload={"booking_id": str(booking.id)})
     db.commit()
     loaded = _load_booking(db, booking.id)
     assert loaded is not None
-    return _booking_to_response(loaded)
+    return _booking_to_response(db, loaded)
 
 
 @router.get("/bookings", response_model=BookingListResponse)
@@ -147,12 +180,12 @@ def list_bookings(
     current_user: User = Depends(require_verified),
     role: str = Query(default="rider", pattern="^(rider|owner)$"),
 ) -> BookingListResponse:
-    # Authz: riders see own requests; owners see requests for their listings.
+    # Authz: riders see own requests; hosts see requests for their listings.
     if role == "owner":
-        if not current_user.is_owner:
+        if not current_user.is_owner and not current_user.is_trainer:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Owner access required",
+                detail="Host access required",
             )
         stmt = select(BookingRequest).where(BookingRequest.owner_id == current_user.id)
     else:
@@ -168,7 +201,7 @@ def list_bookings(
         ).all()
     )
     return BookingListResponse(
-        items=[_booking_to_response(b) for b in bookings],
+        items=[_booking_to_response(db, b) for b in bookings],
         total=len(bookings),
     )
 
@@ -178,11 +211,11 @@ def update_booking_status(
     booking_id: UUID,
     payload: UpdateBookingStatusRequest,
     db: Session = Depends(get_db),
-    owner: User = Depends(require_owner),
+    host: User = Depends(require_host),
 ) -> BookingResponse:
-    # Authz: listing owner may approve or decline pending requests.
+    # Authz: listing host may approve or decline pending requests.
     booking = _load_booking(db, booking_id)
-    if booking is None or booking.owner_id != owner.id:
+    if booking is None or booking.owner_id != host.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
 
     if payload.status == "approved":
@@ -222,7 +255,7 @@ def update_booking_status(
     db.commit()
     loaded = _load_booking(db, booking.id)
     assert loaded is not None
-    return _booking_to_response(loaded)
+    return _booking_to_response(db, loaded)
 
 
 @router.get("/admin/bookings", response_model=BookingListResponse)
@@ -248,6 +281,6 @@ def admin_list_bookings(
         ).all()
     )
     return BookingListResponse(
-        items=[_booking_to_response(b) for b in bookings],
+        items=[_booking_to_response(db, b) for b in bookings],
         total=total,
     )

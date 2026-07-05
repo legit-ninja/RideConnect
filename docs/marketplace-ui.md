@@ -57,15 +57,15 @@ After `make seed`, all email users use password `password123`:
 | `/login`, `/register` | Auth |
 | `/dashboard` | Role-aware hub — next steps by persona |
 | `/calendar` | Verified users: personal schedule, open ride slots, daily weather |
-| `/listings` | Browse rides (filters, cards) |
+| `/listings` | Browse rides (activity, species, price, riding style filters; cards show style chips) |
 | `/listings/[id]` | Listing detail + request ride |
 | `/rider/bookings` | Rider booking requests |
 | `/owner/animals` | Owner animal list |
-| `/owner/animals/new`, `/owner/animals/[id]` | Animal CRUD |
+| `/owner/animals/new`, `/owner/animals/[id]` | Animal CRUD (horses require ≥1 riding style: Western, English, Therapy) |
 | `/owner/listings` | Owner listing list |
 | `/owner/listings/new`, `/owner/listings/[id]` | Listing CRUD + availability slot management |
 | `/owner/friends` | Verified friend invites |
-| `/owner/bookings` | Owner booking inbox (approve/decline) |
+| `/owner/bookings` | Owner booking inbox (list + calendar views, approve/decline) |
 
 ## Verification gates
 

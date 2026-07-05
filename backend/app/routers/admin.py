@@ -203,9 +203,14 @@ def admin_update_roles(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    previous_roles = {"is_rider": user.is_rider, "is_owner": user.is_owner}
+    previous_roles = {
+        "is_rider": user.is_rider,
+        "is_owner": user.is_owner,
+        "is_trainer": user.is_trainer,
+    }
     user.is_rider = payload.is_rider
     user.is_owner = payload.is_owner
+    user.is_trainer = payload.is_trainer
 
     log_admin_action(
         db,
@@ -214,7 +219,11 @@ def admin_update_roles(
         target_user_id=user.id,
         metadata={
             "previous": previous_roles,
-            "new": {"is_rider": payload.is_rider, "is_owner": payload.is_owner},
+            "new": {
+                "is_rider": payload.is_rider,
+                "is_owner": payload.is_owner,
+                "is_trainer": payload.is_trainer,
+            },
         },
     )
     db.commit()

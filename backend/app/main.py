@@ -20,6 +20,7 @@ from app.routers import (
     public,
     reviews,
     species,
+    threads,
 )
 from app.seed import ensure_admin_user
 
@@ -53,6 +54,7 @@ app.include_router(owner.router)
 app.include_router(friend_invites.router)
 app.include_router(invite_tokens.router)
 app.include_router(bookings.router)
+app.include_router(threads.router)
 app.include_router(calendar.router)
 app.include_router(reviews.router)
 app.include_router(events.router)

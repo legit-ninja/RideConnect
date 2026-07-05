@@ -11,6 +11,7 @@ export interface User {
   email: string;
   is_rider: boolean;
   is_owner: boolean;
+  is_trainer: boolean;
   is_admin: boolean;
   verification_status: VerificationStatus;
   is_minor: boolean;
@@ -26,6 +27,8 @@ export interface TokenResponse {
 }
 
 export type ActivityType = "lesson" | "lease" | "trail_ride" | "day_rental";
+
+export type RidingStyle = "western" | "english" | "therapy";
 
 export interface Species {
   id: string;
@@ -47,6 +50,7 @@ export interface ListingSummary {
   public_lat: number;
   public_lng: number;
   photo_urls: string[];
+  riding_styles: RidingStyle[];
   created_at: string;
 }
 
@@ -69,6 +73,7 @@ export interface Animal {
   lng: number;
   address: string;
   photo_urls: string[];
+  riding_styles: RidingStyle[];
   created_at: string;
 }
 
@@ -123,6 +128,7 @@ export interface AdminUserSummary {
   email: string;
   is_rider: boolean;
   is_owner: boolean;
+  is_trainer: boolean;
   is_admin: boolean;
   verification_status: VerificationStatus;
   is_minor: boolean;
@@ -238,6 +244,7 @@ export function registerUser(
     last_name: string;
     is_rider: boolean;
     is_owner: boolean;
+    is_trainer: boolean;
   },
   funnel?: { src?: string; ref?: string },
 ): Promise<User> {
@@ -317,7 +324,7 @@ export function updateUserVerification(
 export function updateUserRoles(
   token: string,
   userId: string,
-  payload: { is_rider: boolean; is_owner: boolean },
+  payload: { is_rider: boolean; is_owner: boolean; is_trainer: boolean },
 ): Promise<AdminUserDetail> {
   return request<AdminUserDetail>(
     `/admin/users/${userId}/roles`,
@@ -335,19 +342,28 @@ export function fetchListings(params: {
   species_id?: string;
   min_price?: number;
   max_price?: number;
+  riding_style?: RidingStyle;
 } = {}): Promise<ListingSummary[]> {
   const search = new URLSearchParams();
   if (params.activity_type) search.set("activity_type", params.activity_type);
   if (params.species_id) search.set("species_id", params.species_id);
   if (params.min_price !== undefined) search.set("min_price", String(params.min_price));
   if (params.max_price !== undefined) search.set("max_price", String(params.max_price));
+  if (params.riding_style) search.set("riding_style", params.riding_style);
   const query = search.toString();
   const path = query ? `/listings?${query}` : "/listings";
   return request<ListingSummary[]>(path);
 }
 
-export function fetchListing(id: string): Promise<ListingDetail> {
-  return request<ListingDetail>(`/listings/${id}`);
+export function fetchListing(id: string, token?: string | null): Promise<ListingDetail> {
+  return request<ListingDetail>(`/listings/${id}`, {}, token);
+}
+
+export function fetchListingOpenSlots(
+  token: string,
+  listingId: string,
+): Promise<AvailabilitySlot[]> {
+  return request<AvailabilitySlot[]>(`/listings/${listingId}/slots`, {}, token);
 }
 
 export function fetchOwnerAnimals(token: string): Promise<Animal[]> {
@@ -511,6 +527,7 @@ export interface BookingRequest {
   requested_at: string;
   listing_price: string;
   activity_type: string;
+  thread_id?: string | null;
 }
 
 export interface BookingListResponse {
@@ -561,7 +578,6 @@ export function createBooking(
   token: string,
   payload: {
     listing_id: string;
-    scheduled_at?: string;
     availability_slot_id?: string;
     note?: string;
   },
@@ -621,6 +637,7 @@ export interface PublicListing {
   owner_member_since: string;
   review_count: number;
   review_average: number | null;
+  riding_styles: RidingStyle[];
   slug: string;
   active: boolean;
 }
@@ -892,6 +909,38 @@ export function deleteOwnerListingSlot(
   return request<void>(
     `/owner/listings/${listingId}/slots/${slotId}`,
     { method: "DELETE" },
+    token,
+  );
+}
+
+export interface ThreadMessage {
+  id: string;
+  thread_id: string;
+  sender_id: string;
+  body: string;
+  sent_at: string;
+}
+
+export interface ThreadMessageListResponse {
+  items: ThreadMessage[];
+  total: number;
+}
+
+export function fetchThreadMessages(
+  token: string,
+  threadId: string,
+): Promise<ThreadMessageListResponse> {
+  return request<ThreadMessageListResponse>(`/threads/${threadId}/messages`, {}, token);
+}
+
+export function postThreadMessage(
+  token: string,
+  threadId: string,
+  body: string,
+): Promise<ThreadMessage> {
+  return request<ThreadMessage>(
+    `/threads/${threadId}/messages`,
+    { method: "POST", body: JSON.stringify({ body }) },
     token,
   );
 }

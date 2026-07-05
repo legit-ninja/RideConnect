@@ -2,6 +2,7 @@ from app.models.admin_audit_log import AdminAuditAction, AdminAuditLog
 from app.models.animal import Animal
 from app.models.booking_request import BookingRequest, BookingStatus, PaymentType
 from app.models.event import Event
+from app.models.family_member import FamilyMember
 from app.models.friend_invite import FriendInvite, FriendInviteStatus
 from app.models.invite_token import InviteToken
 from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
@@ -15,7 +16,7 @@ from app.models.review import ModerationStatus, Review
 from app.models.riding_style import RidingStyle
 from app.models.species import Species
 from app.models.thread import Thread
-from app.models.user import User, VerificationStatus
+from app.models.user import User, VerificationStatus, RiderType
 
 __all__ = [
     "ActivityType",
@@ -25,6 +26,7 @@ __all__ = [
     "BookingRequest",
     "BookingStatus",
     "Event",
+    "FamilyMember",
     "FriendInvite",
     "FriendInviteStatus",
     "InviteToken",
@@ -41,6 +43,7 @@ __all__ = [
     "PlatformFlagType",
     "Review",
     "RidingStyle",
+    "RiderType",
     "SlotStatus",
     "Thread",
     "User",

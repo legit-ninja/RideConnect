@@ -262,7 +262,12 @@ export function BookingsCalendar({
                     <strong>
                       {booking.animal_name} — {activityTypeLabel(booking.activity_type)}
                     </strong>
-                    <div className={styles.slotMeta}>From {booking.rider_email}</div>
+                    <div className={styles.slotMeta}>
+                      From{" "}
+                      {booking.is_family_booking && booking.booker_family_name
+                        ? `Family — ${booking.booker_family_name} (${booking.family_party_size ?? "?"})`
+                        : booking.rider_email}
+                    </div>
                     <VerificationPill status={booking.rider_verification_status} />
                     {booking.scheduled_at ? (
                       <div className={styles.slotMeta}>Time: {formatTime(booking.scheduled_at)}</div>

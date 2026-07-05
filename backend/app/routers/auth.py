@@ -10,7 +10,9 @@ from app.db import get_db
 from app.dependencies import get_current_user, require_verified
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UpdateProfileRequest, UserResponse
+from app.schemas.family import FamilyMemberResponse, FamilyProfileResponse, UpdateFamilyProfileRequest
 from app.services.events import log_event
+from app.services.family import apply_family_profile, list_family_members
 from app.services.security import create_access_token, hash_password, verify_password
 from app.services.storage import get_public_url, put_object
 
@@ -109,6 +111,45 @@ def update_my_profile(
     db.commit()
     db.refresh(current_user)
     return _to_user_response(current_user)
+
+
+@router.get("/me/family-members", response_model=FamilyProfileResponse)
+def get_my_family_profile(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FamilyProfileResponse:
+    # Authz: authenticated users may read their own family roster only.
+    members = list_family_members(db, current_user.id)
+    return FamilyProfileResponse(
+        rider_type=current_user.rider_type,
+        family_name=current_user.family_name,
+        family_size=current_user.family_size,
+        members=[FamilyMemberResponse.model_validate(m) for m in members],
+    )
+
+
+@router.put("/me/family-profile", response_model=FamilyProfileResponse)
+def update_my_family_profile(
+    payload: UpdateFamilyProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FamilyProfileResponse:
+    # Authz: users may configure their own rider type and family roster only.
+    if not current_user.is_rider:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Family profile is only available for rider accounts",
+        )
+    members = apply_family_profile(db, current_user, payload)
+    db.commit()
+    db.refresh(current_user)
+    members = list_family_members(db, current_user.id)
+    return FamilyProfileResponse(
+        rider_type=current_user.rider_type,
+        family_name=current_user.family_name,
+        family_size=current_user.family_size,
+        members=[FamilyMemberResponse.model_validate(m) for m in members],
+    )
 
 
 @router.post("/me/avatar", response_model=UserResponse)

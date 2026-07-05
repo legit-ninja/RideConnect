@@ -210,3 +210,55 @@ Migration `015`: maps legacy `is_trainer=true` → both flags + admin-review pla
 
 - `trainer_self_report` — migration audit queue for legacy trainers.
 - `minor_invite_skew` — trainer/instructor accounts with minor-heavy counterparties.
+
+## Family rider registration (migration `019`)
+
+### USER family profile
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `rider_type` | enum | `individual` (default) \| `family` |
+| `family_name` | string nullable | Required when `rider_type=family` |
+| `family_size` | smallint nullable | 2–20; roster length must match |
+
+Account holder is the implicit guardian for minor roster members (no separate User per child).
+
+### FAMILY_MEMBER
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid PK | |
+| `user_id` | FK → users | Family account holder |
+| `display_name` | string | Required |
+| `rider_skill_level` | smallint nullable | 1–5 |
+| `is_minor` | bool | Guardian = owning user |
+| `sort_order` | int | UI ordering |
+| `created_at` | datetime | Audit |
+
+```mermaid
+erDiagram
+    USER ||--o{ FAMILY_MEMBER : owns
+    USER ||--o{ BOOKING_REQUEST : books_as_holder
+    FAMILY_MEMBER ||--o{ BOOKING_REQUEST : participates
+    BOOKING_REQUEST }o--|| BOOKING_REQUEST : family_booking_group_id
+
+    FAMILY_MEMBER {
+        uuid id PK
+        uuid user_id FK
+        string display_name
+        smallint rider_skill_level
+        bool is_minor
+        int sort_order
+        datetime created_at
+    }
+```
+
+### BOOKING_REQUEST family group fields
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `family_booking_group_id` | uuid nullable, indexed | Shared across N rows for one party |
+| `family_member_id` | FK → family_members nullable | Actual rider when family booking |
+| `participant_display_name` | string nullable | Snapshot at booking time |
+
+**Semantics:** Individual bookings leave all three null; `rider_id` is the authenticated user. Family bookings create one row per selected roster member with the same `family_booking_group_id`; `rider_id` is always the verified account holder. Status transitions (approve/decline/complete) apply to the whole group. Messaging uses a single thread on the lead booking in the group.

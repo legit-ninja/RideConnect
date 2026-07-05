@@ -14,10 +14,12 @@ import styles from "@/components/marketplace/marketplace.module.css";
 import {
   ApiError,
   AvailabilitySlot,
+  FamilyProfile,
   ListingDetail,
   User,
   createBooking,
   fetchCurrentUser,
+  fetchFamilyProfile,
   fetchListing,
   fetchListingOpenSlots,
 } from "@/lib/api";
@@ -45,6 +47,8 @@ export default function ListingDetailPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [familyProfile, setFamilyProfile] = useState<FamilyProfile | null>(null);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   useEffect(() => {
     const token = getToken();
@@ -66,7 +70,15 @@ export default function ListingDetailPage() {
       .then((currentUser) => {
         setUser(currentUser);
         if (currentUser.is_rider && currentUser.verification_status === "verified") {
-          return fetchListingOpenSlots(token, id).then(setOpenSlots);
+          const slotsPromise = fetchListingOpenSlots(token, id).then(setOpenSlots);
+          const familyPromise =
+            currentUser.rider_type === "family"
+              ? fetchFamilyProfile(token).then((profile) => {
+                  setFamilyProfile(profile);
+                  setSelectedMemberIds(profile.members.map((m) => m.id));
+                })
+              : Promise.resolve(undefined);
+          return Promise.all([slotsPromise, familyPromise]);
         }
         setOpenSlots(null);
         return undefined;
@@ -84,10 +96,19 @@ export default function ListingDetailPage() {
     }
   }, [slotIdFromQuery]);
 
+  function familyMemberPayload(): { family_member_ids?: string[] } {
+    if (user?.rider_type !== "family") return {};
+    return { family_member_ids: selectedMemberIds };
+  }
+
   async function handleSlotBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const token = getToken();
     if (!token || !listing || !selectedSlotId) return;
+    if (user?.rider_type === "family" && selectedMemberIds.length === 0) {
+      setSubmitError("Select at least one family member for this ride.");
+      return;
+    }
     setBusy(true);
     setSubmitError(null);
     const note = String(new FormData(event.currentTarget).get("note") || "");
@@ -96,6 +117,7 @@ export default function ListingDetailPage() {
         listing_id: listing.id,
         availability_slot_id: selectedSlotId,
         note: note || undefined,
+        ...familyMemberPayload(),
       });
       setSuccess(true);
     } catch (err: unknown) {
@@ -114,12 +136,17 @@ export default function ListingDetailPage() {
       setSubmitError(`Please enter at least ${INQUIRY_NOTE_MIN_LENGTH} characters.`);
       return;
     }
+    if (user?.rider_type === "family" && selectedMemberIds.length === 0) {
+      setSubmitError("Select at least one family member for this ride.");
+      return;
+    }
     setBusy(true);
     setSubmitError(null);
     try {
       await createBooking(token, {
         listing_id: listing.id,
         note,
+        ...familyMemberPayload(),
       });
       setSuccess(true);
     } catch (err: unknown) {
@@ -207,6 +234,37 @@ export default function ListingDetailPage() {
       </InlineAlert>
     ) : null;
 
+    const familyPicker =
+      user.rider_type === "family" ? (
+        <fieldset className={styles.slotList}>
+          <legend>Who is riding?</legend>
+          {!familyProfile || familyProfile.members.length === 0 ? (
+            <InlineAlert variant="warning">
+              Set up your family roster in{" "}
+              <Link href="/settings">Settings</Link> before booking.
+            </InlineAlert>
+          ) : (
+            familyProfile.members.map((member) => (
+              <label key={member.id} className={styles.slotRow}>
+                <input
+                  type="checkbox"
+                  checked={selectedMemberIds.includes(member.id)}
+                  onChange={(e) => {
+                    setSelectedMemberIds((prev) =>
+                      e.target.checked
+                        ? [...prev, member.id]
+                        : prev.filter((id) => id !== member.id),
+                    );
+                  }}
+                />
+                {member.display_name}
+                {member.is_minor ? " (minor)" : ""}
+              </label>
+            ))
+          )}
+        </fieldset>
+      ) : null;
+
     if (showContactForm || !hasOpenSlots) {
       return (
         <div className={styles.detailSection}>
@@ -231,6 +289,7 @@ export default function ListingDetailPage() {
             </p>
           )}
           <form onSubmit={handleContactSubmit}>
+            {familyPicker}
             <label>
               Message to host (required)
               <textarea
@@ -260,6 +319,7 @@ export default function ListingDetailPage() {
           </InlineAlert>
         ) : null}
         <form onSubmit={handleSlotBooking}>
+          {familyPicker}
           <fieldset className={styles.slotList}>
             <legend>Choose an available time</legend>
             {openSlots?.map((slot) => (

@@ -6,6 +6,8 @@ export type VerificationStatus =
   | "verified"
   | "rejected";
 
+export type RiderType = "individual" | "family";
+
 export interface User {
   id: string;
   email: string;
@@ -15,6 +17,9 @@ export interface User {
   is_riding_instructor: boolean;
   trainer_verified: boolean;
   rider_skill_level: number | null;
+  rider_type: RiderType;
+  family_name: string | null;
+  family_size: number | null;
   is_admin: boolean;
   verification_status: VerificationStatus;
   is_minor: boolean;
@@ -107,6 +112,8 @@ export interface AdminStats {
   rejected_users: number;
   rider_users: number;
   owner_users: number;
+  trainer_users: number;
+  verified_trainer_users: number;
   oauth_users: number;
   signups_last_7d: number;
   total_animals: number;
@@ -293,6 +300,49 @@ export function updateProfile(
   return request<User>(
     "/auth/me/profile",
     { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export interface FamilyMember {
+  id: string;
+  display_name: string;
+  rider_skill_level: number | null;
+  is_minor: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface FamilyProfile {
+  rider_type: RiderType;
+  family_name: string | null;
+  family_size: number | null;
+  members: FamilyMember[];
+}
+
+export interface FamilyMemberInput {
+  display_name: string;
+  rider_skill_level?: number | null;
+  is_minor?: boolean;
+  sort_order?: number;
+}
+
+export function fetchFamilyProfile(token: string): Promise<FamilyProfile> {
+  return request<FamilyProfile>("/auth/me/family-members", {}, token);
+}
+
+export function updateFamilyProfile(
+  token: string,
+  payload: {
+    rider_type: RiderType;
+    family_name?: string | null;
+    family_size?: number | null;
+    members?: FamilyMemberInput[] | null;
+  },
+): Promise<FamilyProfile> {
+  return request<FamilyProfile>(
+    "/auth/me/family-profile",
+    { method: "PUT", body: JSON.stringify(payload) },
     token,
   );
 }
@@ -554,6 +604,13 @@ export type BookingStatus =
 
 export type PaymentType = "paid" | "free";
 
+export interface BookingParticipant {
+  booking_id: string;
+  family_member_id: string | null;
+  participant_display_name: string | null;
+  rider_skill_warning?: string | null;
+}
+
 export interface BookingRequest {
   id: string;
   listing_id: string;
@@ -573,6 +630,13 @@ export interface BookingRequest {
   activity_type: string;
   thread_id?: string | null;
   rider_skill_warning?: string | null;
+  family_booking_group_id?: string | null;
+  family_member_id?: string | null;
+  participant_display_name?: string | null;
+  is_family_booking?: boolean;
+  family_party_size?: number | null;
+  booker_family_name?: string | null;
+  family_participants?: BookingParticipant[] | null;
 }
 
 export interface BookingListResponse {
@@ -625,6 +689,7 @@ export function createBooking(
     listing_id: string;
     availability_slot_id?: string;
     note?: string;
+    family_member_ids?: string[];
   },
 ): Promise<BookingRequest> {
   return request<BookingRequest>(

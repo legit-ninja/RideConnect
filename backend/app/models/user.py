@@ -16,6 +16,11 @@ class VerificationStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+class RiderType(str, enum.Enum):
+    INDIVIDUAL = "individual"
+    FAMILY = "family"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -30,6 +35,17 @@ class User(Base):
     is_riding_instructor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     trainer_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rider_skill_level: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    rider_type: Mapped[RiderType] = mapped_column(
+        Enum(
+            RiderType,
+            name="rider_type",
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        default=RiderType.INDIVIDUAL,
+        nullable=False,
+    )
+    family_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    family_size: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     verification_status: Mapped[VerificationStatus] = mapped_column(
         Enum(
@@ -58,6 +74,12 @@ class User(Base):
     )
 
     guardian = relationship("User", remote_side=[id], foreign_keys=[guardian_user_id])
+    family_members = relationship(
+        "FamilyMember",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="FamilyMember.sort_order",
+    )
     oauth_accounts = relationship("OAuthAccount", back_populates="user")
     animals = relationship("Animal", back_populates="owner")
     listings = relationship("Listing", back_populates="owner")

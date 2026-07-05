@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.user import VerificationStatus
+from app.models.user import RiderType, User, VerificationStatus
 
 
 class RegisterRequest(BaseModel):
@@ -42,6 +42,9 @@ class UserResponse(BaseModel):
     is_riding_instructor: bool
     trainer_verified: bool
     rider_skill_level: int | None
+    rider_type: RiderType
+    family_name: str | None
+    family_size: int | None
     is_admin: bool
     verification_status: VerificationStatus
     is_minor: bool

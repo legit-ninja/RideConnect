@@ -13,6 +13,7 @@ from app.config import settings
 from app.db import SessionLocal
 from app.models.animal import Animal
 from app.models.booking_request import BookingRequest, BookingStatus, PaymentType
+from app.models.family_member import FamilyMember
 from app.models.friend_invite import FriendInvite, FriendInviteStatus
 from app.models.listing import ActivityType, Listing, TackProvided
 from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
@@ -20,7 +21,7 @@ from app.models.oauth_account import OAuthAccount, OAuthProvider
 from app.models.review import ModerationStatus, Review
 from app.models.rider_skill import RiderSkillLevel
 from app.models.species import Species
-from app.models.user import User, VerificationStatus
+from app.models.user import RiderType, User, VerificationStatus
 from app.services.flags import maybe_flag_trainer_minor_skew
 from app.services.public_location import default_display_location, jitter_coordinates
 from app.services.security import hash_password
@@ -43,7 +44,16 @@ USER_IDS = {
     "minor_rider_2": uuid.UUID("11111111-1111-4111-8111-111111111111"),
     "minor_rider_3": uuid.UUID("11111111-1111-4111-8111-111111111112"),
     "minor_rider_4": uuid.UUID("11111111-1111-4111-8111-111111111113"),
+    "family_verified": uuid.UUID("11111111-1111-4111-8111-111111111114"),
 }
+
+FAMILY_MEMBER_IDS = {
+    "maria": uuid.UUID("22222222-2222-4222-8222-222222222201"),
+    "alex": uuid.UUID("22222222-2222-4222-8222-222222222202"),
+    "sam": uuid.UUID("22222222-2222-4222-8222-222222222203"),
+}
+
+FAMILY_BOOKING_GROUP_ID = uuid.UUID("33333333-3333-4333-8333-333333333301")
 
 PLACEHOLDER_PHOTO = "https://placehold.co/600x400/e8e8e8/666?text=RideConnect"
 
@@ -157,6 +167,9 @@ def upsert_user(
     is_riding_instructor: bool = False,
     trainer_verified: bool = False,
     rider_skill_level: int | None = None,
+    rider_type: RiderType = RiderType.INDIVIDUAL,
+    family_name: str | None = None,
+    family_size: int | None = None,
 ) -> User:
     derived_first, derived_last = _name_from_email(email)
     first_name = first_name or derived_first
@@ -181,6 +194,9 @@ def upsert_user(
             is_riding_instructor=is_riding_instructor,
             trainer_verified=trainer_verified,
             rider_skill_level=rider_skill_level,
+            rider_type=rider_type,
+            family_name=family_name,
+            family_size=family_size,
         )
         if created_at is not None:
             user.created_at = created_at
@@ -200,6 +216,9 @@ def upsert_user(
         user.is_riding_instructor = is_riding_instructor
         user.trainer_verified = trainer_verified
         user.rider_skill_level = rider_skill_level
+        user.rider_type = rider_type
+        user.family_name = family_name
+        user.family_size = family_size
         if created_at is not None:
             user.created_at = created_at
     return user
@@ -513,6 +532,20 @@ def seed_users(db) -> dict[str, User]:
             guardian_user_id=USER_IDS["guardian"],
             first_name="Taylor",
             last_name="Minor",
+        ),
+        "family_verified": upsert_user(
+            db,
+            user_id=USER_IDS["family_verified"],
+            email="family.verified@example.com",
+            is_rider=True,
+            is_owner=False,
+            verification_status=VerificationStatus.VERIFIED,
+            password_hash=hashed,
+            rider_type=RiderType.FAMILY,
+            family_name="Rivera Family",
+            family_size=3,
+            first_name="Elena",
+            last_name="Rivera",
         ),
     }
     db.flush()
@@ -1234,6 +1267,116 @@ def seed_booking_requests(db, users: dict[str, User]) -> None:
         )
 
 
+def upsert_family_member(
+    db,
+    *,
+    member_id: uuid.UUID,
+    user: User,
+    display_name: str,
+    rider_skill_level: int | None,
+    is_minor: bool,
+    sort_order: int,
+) -> FamilyMember:
+    member = db.get(FamilyMember, member_id)
+    if member is None:
+        member = FamilyMember(
+            id=member_id,
+            user_id=user.id,
+            display_name=display_name,
+            rider_skill_level=rider_skill_level,
+            is_minor=is_minor,
+            sort_order=sort_order,
+        )
+        db.add(member)
+    else:
+        member.user_id = user.id
+        member.display_name = display_name
+        member.rider_skill_level = rider_skill_level
+        member.is_minor = is_minor
+        member.sort_order = sort_order
+    return member
+
+
+def seed_family_profile(db, users: dict[str, User]) -> dict[str, FamilyMember]:
+    family_user = users.get("family_verified")
+    if family_user is None:
+        return {}
+    members = {
+        "maria": upsert_family_member(
+            db,
+            member_id=FAMILY_MEMBER_IDS["maria"],
+            user=family_user,
+            display_name="Maria Rivera",
+            rider_skill_level=RiderSkillLevel.INTERMEDIATE.value,
+            is_minor=False,
+            sort_order=0,
+        ),
+        "alex": upsert_family_member(
+            db,
+            member_id=FAMILY_MEMBER_IDS["alex"],
+            user=family_user,
+            display_name="Alex Rivera",
+            rider_skill_level=RiderSkillLevel.BEGINNER.value,
+            is_minor=False,
+            sort_order=1,
+        ),
+        "sam": upsert_family_member(
+            db,
+            member_id=FAMILY_MEMBER_IDS["sam"],
+            user=family_user,
+            display_name="Sam Rivera",
+            rider_skill_level=RiderSkillLevel.BEGINNER.value,
+            is_minor=True,
+            sort_order=2,
+        ),
+    }
+    db.flush()
+    return members
+
+
+def seed_family_bookings(
+    db, users: dict[str, User], members: dict[str, FamilyMember]
+) -> None:
+    if not members:
+        return
+    star_trail_id = uuid.uuid5(uuid.NAMESPACE_DNS, "rideconnect.dev.listing.star-trail")
+    star_trail = db.get(Listing, star_trail_id)
+    family_user = users.get("family_verified")
+    if star_trail is None or family_user is None:
+        return
+    roster = [members["maria"], members["alex"], members["sam"]]
+    note = "Family trail ride — all three riders available Saturday morning"
+    for idx, member in enumerate(roster):
+        booking_id = uuid.uuid5(
+            uuid.NAMESPACE_DNS, f"rideconnect.dev.booking.family-pending-{idx}"
+        )
+        booking = db.get(BookingRequest, booking_id)
+        if booking is None:
+            booking = BookingRequest(
+                id=booking_id,
+                listing_id=star_trail.id,
+                rider_id=family_user.id,
+                owner_id=star_trail.owner_id,
+                payment_type=PaymentType.PAID,
+                status=BookingStatus.PENDING_OWNER,
+                note=note if idx == 0 else None,
+                family_booking_group_id=FAMILY_BOOKING_GROUP_ID,
+                family_member_id=member.id,
+                participant_display_name=member.display_name,
+            )
+            db.add(booking)
+        else:
+            booking.listing_id = star_trail.id
+            booking.rider_id = family_user.id
+            booking.owner_id = star_trail.owner_id
+            booking.payment_type = PaymentType.PAID
+            booking.status = BookingStatus.PENDING_OWNER
+            booking.note = note if idx == 0 else None
+            booking.family_booking_group_id = FAMILY_BOOKING_GROUP_ID
+            booking.family_member_id = member.id
+            booking.participant_display_name = member.display_name
+
+
 def upsert_review(
     db,
     *,
@@ -1319,7 +1462,9 @@ def run_seed() -> None:
         seed_availability_slots(db)
         seed_bulk_owner_assets(db, bulk)
         seed_friend_invites(db, users, bulk)
+        family_members = seed_family_profile(db, users)
         seed_booking_requests(db, users)
+        seed_family_bookings(db, users, family_members)
         seed_reviews(db, users)
         db.commit()
         print("Dev seed complete.")

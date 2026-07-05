@@ -33,6 +33,7 @@ After `make seed`, all email users use password `password123`:
 | `minor.rider@example.com` | rider (minor) | unverified | Guardian warning |
 | `minor.rider2@example.com` … `minor.rider4@example.com` | rider (minor) | verified | Trainer minor-skew flag fixtures |
 | `guardian@example.com` | rider + owner | verified | Linked guardian for minors |
+| `family.verified@example.com` | rider (family account) | verified | 3-member roster incl. one minor; family booking walkthrough |
 | `oauth.only@example.com` | — | unverified | OAuth only (no password) |
 
 **Admin login** (from `.env`, not seed — password is **not** `password123`):
@@ -51,12 +52,15 @@ After `make seed`, all email users use password `password123`:
 - **Public listing community fields**: browse Comet or Shadow listings for min skill, weight limit, tack expectations, and verified-trainer badge (`owner.verified2`)
 - **Location privacy**: Star’s listing uses a street address in seed data; public page shows city-only label
 - **Admin flags**: `/admin/flags` includes `minor_invite_skew` for `owner.verified2@example.com` (trainer with disproportionate minor friend connections)
+- **Family booking**: pending group request from `family.verified@example.com` (Rivera Family, 3 riders) on Star's trail listing — visible as one grouped row at `/owner/bookings`
 
 **Walkthrough hints:**
 
 | Goal | Login | Where |
 |------|-------|-------|
 | Owner inbox skill warning | `owner.verified2@example.com` | `/owner/bookings` — pending Comet rental request |
+| Family roster + grouped booking | `family.verified@example.com` | `/settings` (roster editor); `/listings` → book with multi-select |
+| Owner family inbox | `owner.verified@example.com` | `/owner/bookings` — **Family — Rivera Family** (3 riders) |
 | Public gear/skill requirements | (no login) | Public listing slug for Comet or Shadow |
 | Counterparty confirmed skill | `owner.verified@example.com` or `owner.verified2@example.com` | `GET /users/{both_verified_id}/counterparty` or connected booking UI |
 | Trainer verification toggle | `admin@example.com` | `/admin/users` → user detail |
@@ -79,7 +83,8 @@ After `make seed`, all email users use password `password123`:
 | `/owner/listings` | Owner listing list |
 | `/owner/listings/new`, `/owner/listings/[id]` | Listing CRUD + availability slot management |
 | `/owner/friends` | Verified friend invites |
-| `/owner/bookings` | Owner booking inbox (list + calendar views, approve/decline) |
+| `/owner/bookings` | Owner booking inbox (list + calendar views, approve/decline; family groups shown as one row) |
+| `/settings` | Profile setup — individual vs family rider type, family roster editor |
 
 ## Verification gates
 
@@ -92,8 +97,16 @@ After `make seed`, all email users use password `password123`:
 
 1. Verified rider browses `/listings` and opens a listing.
 2. **Request ride** submits a booking request (paid listings → `pending_payment` stub; friend-only → requires accepted friend invite).
-3. Owner reviews requests at `/owner/bookings` and approves or declines.
-4. All payments stay on-platform (Stripe deferred; no off-platform copy).
+3. **Family accounts** select one or more roster members at booking time; the API creates linked booking rows under one `family_booking_group_id`.
+4. Owner reviews requests at `/owner/bookings` and approves or declines (family groups act as a single unit).
+5. All payments stay on-platform (Stripe deferred; no off-platform copy).
+
+## Family rider registration
+
+1. Verified adult rider opens `/settings` and switches **Individual** → **Family**.
+2. Enter family name, size (2–20), and roster rows (display name, skill level, minor flag).
+3. Save via `PUT /auth/me/family-profile`; minors on the roster use the account holder as implicit guardian.
+4. When booking, multi-select roster members; owner inbox shows **Family — {name}** with participant list.
 
 ## Friend invites
 

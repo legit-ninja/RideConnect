@@ -27,6 +27,13 @@ import {
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 
+function riderInboxLabel(booking: BookingRequest): string {
+  if (booking.is_family_booking && booking.booker_family_name) {
+    return `Family — ${booking.booker_family_name} (${booking.family_party_size ?? "?"} riders)`;
+  }
+  return booking.rider_email;
+}
+
 type PendingAction = {
   booking: BookingRequest;
   status: "approved" | "declined" | "completed";
@@ -149,9 +156,22 @@ export default function OwnerBookingsPage() {
                     {bookings.map((booking) => (
                       <tr key={booking.id}>
                         <td>
-                          <div>{booking.rider_email}</div>
+                          <div>{riderInboxLabel(booking)}</div>
+                          {booking.is_family_booking ? (
+                            <div className={styles.cardMeta}>{booking.rider_email}</div>
+                          ) : null}
                           <VerificationPill status={booking.rider_verification_status} />
-                          {booking.rider_skill_warning ? (
+                          {booking.family_participants?.map((participant) => (
+                            <div key={participant.booking_id} className={styles.cardMeta}>
+                              {participant.participant_display_name}
+                              {participant.rider_skill_warning ? (
+                                <div className={styles.banner} role="status">
+                                  {participant.rider_skill_warning}
+                                </div>
+                              ) : null}
+                            </div>
+                          ))}
+                          {!booking.is_family_booking && booking.rider_skill_warning ? (
                             <div className={styles.banner} role="status">
                               {booking.rider_skill_warning}
                             </div>
@@ -236,8 +256,8 @@ export default function OwnerBookingsPage() {
         description={
           pending
             ? pending.status === "completed"
-              ? `Mark the ride with ${pending.booking.rider_email} for ${pending.booking.animal_name} as complete so both parties can leave reviews.`
-              : `${pending.status === "approved" ? "Approve" : "Decline"} the ride request from ${pending.booking.rider_email} for ${pending.booking.animal_name}.`
+              ? `Mark the ride with ${riderInboxLabel(pending.booking)} for ${pending.booking.animal_name} as complete so both parties can leave reviews.`
+              : `${pending.status === "approved" ? "Approve" : "Decline"} the ride request from ${riderInboxLabel(pending.booking)} for ${pending.booking.animal_name}.`
             : ""
         }
         confirmLabel={

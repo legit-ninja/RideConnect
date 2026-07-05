@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 
 from app.config import settings
+
+# Open-Meteo free forecast horizon (days ahead from today, inclusive).
+_OPEN_METEO_FORECAST_DAYS = 16
 
 # Ride suitability thresholds (precip %, wind mph) — tune in one place.
 _PRECIP_GOOD = 30
@@ -73,17 +76,31 @@ def _weather_summary(code: int | None, precip: int | None) -> str:
     return "Mixed conditions"
 
 
+def _clamp_forecast_range(from_date: date, to_date: date) -> tuple[date, date] | None:
+    """Open-Meteo rejects end_date beyond ~16 days ahead; clamp instead of failing."""
+    today = date.today()
+    max_end = today + timedelta(days=_OPEN_METEO_FORECAST_DAYS - 1)
+    if from_date > max_end:
+        return None
+    effective_to = min(to_date, max_end)
+    return from_date, effective_to
+
+
 def fetch_daily_forecast(
     lat: float,
     lng: float,
     from_date: date,
     to_date: date,
 ) -> list[DailyWeather]:
+    clamped = _clamp_forecast_range(from_date, to_date)
+    if clamped is None:
+        return []
+    request_from, request_to = clamped
     cache_key = (
         round(lat, 2),
         round(lng, 2),
-        from_date.isoformat(),
-        to_date.isoformat(),
+        request_from.isoformat(),
+        request_to.isoformat(),
     )
     now = time.time()
     cached = _cache.get(cache_key)
@@ -103,8 +120,8 @@ def fetch_daily_forecast(
             ]
         ),
         "timezone": settings.weather_timezone,
-        "start_date": from_date.isoformat(),
-        "end_date": to_date.isoformat(),
+        "start_date": request_from.isoformat(),
+        "end_date": request_to.isoformat(),
         "wind_speed_unit": "kmh",
         "temperature_unit": "celsius",
     }

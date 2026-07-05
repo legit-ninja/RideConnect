@@ -65,6 +65,8 @@ class AdminStatsResponse(BaseModel):
     rejected_users: int
     rider_users: int
     owner_users: int
+    trainer_users: int
+    verified_trainer_users: int
     oauth_users: int
     signups_last_7d: int
     total_animals: int

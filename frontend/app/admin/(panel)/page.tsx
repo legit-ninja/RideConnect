@@ -94,6 +94,8 @@ export default function AdminDashboardPage() {
         <StatCard label="Rejected" value={stats.rejected_users} />
         <StatCard label="Riders" value={stats.rider_users} />
         <StatCard label="Owners" value={stats.owner_users} />
+        <StatCard label="Trainer claims" value={stats.trainer_users} />
+        <StatCard label="Verified trainers" value={stats.verified_trainer_users} />
         <StatCard label="OAuth linked" value={stats.oauth_users} />
       </div>
 

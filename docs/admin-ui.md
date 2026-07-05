@@ -12,7 +12,7 @@ Trust-first operations console for RideConnect moderators.
 2. Sign in at http://localhost:3000/login
 3. Navigate to http://localhost:3000/admin
 
-Seeded dev users (password `password123`) are available after `make seed`. Use `owner.pending@example.com` to test the verification queue.
+Seeded dev users (password `password123`) are available after `make seed`. Use `owner.pending@example.com` to test the verification queue. Use `owner.verified2@example.com` for a verified horse trainer + riding instructor (shows under **Trainer claims** on the dashboard and in the users list Roles column).
 
 **Bulk preview accounts** (~50 extra users for admin list pagination):
 

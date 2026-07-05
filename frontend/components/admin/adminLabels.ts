@@ -13,11 +13,21 @@ const ACTIVITY_LABEL: Record<string, string> = {
 };
 
 export function formatRoles(
-  user: Pick<AdminUserSummary, "is_rider" | "is_owner">,
+  user: Pick<
+    AdminUserSummary,
+    | "is_rider"
+    | "is_owner"
+    | "is_horse_trainer"
+    | "is_riding_instructor"
+    | "trainer_verified"
+  >,
 ): string {
   const roles: string[] = [];
   if (user.is_rider) roles.push("Rider");
   if (user.is_owner) roles.push("Owner");
+  if (user.is_horse_trainer) roles.push("Horse trainer");
+  if (user.is_riding_instructor) roles.push("Riding instructor");
+  if (user.trainer_verified) roles.push("Verified trainer");
   return roles.length > 0 ? roles.join(" · ") : "—";
 }
 

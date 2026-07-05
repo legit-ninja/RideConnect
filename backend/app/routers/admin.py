@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
@@ -67,6 +67,25 @@ def admin_stats(
         db.scalar(select(func.count()).select_from(User).where(User.is_owner.is_(True)))
         or 0
     )
+    trainer_users = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(
+                or_(
+                    User.is_horse_trainer.is_(True),
+                    User.is_riding_instructor.is_(True),
+                )
+            )
+        )
+        or 0
+    )
+    verified_trainer_users = (
+        db.scalar(
+            select(func.count()).select_from(User).where(User.trainer_verified.is_(True))
+        )
+        or 0
+    )
     oauth_users = count_oauth_users(db)
     signups_last_7d = count_signups_since(
         db, datetime.now(UTC) - timedelta(days=7)
@@ -89,6 +108,8 @@ def admin_stats(
         rejected_users=rejected_users,
         rider_users=rider_users,
         owner_users=owner_users,
+        trainer_users=trainer_users,
+        verified_trainer_users=verified_trainer_users,
         oauth_users=oauth_users,
         signups_last_7d=signups_last_7d,
         total_animals=total_animals,

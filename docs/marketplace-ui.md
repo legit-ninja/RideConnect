@@ -13,7 +13,7 @@ Trust-first marketplace for riders and owners — browse, book, and host verifie
 | React Router | Next.js App Router |
 | TanStack Query | Server components + client `fetch` / `useEffect` |
 | framer-motion | CSS utilities in [`utilities.css`](../frontend/app/utilities.css) |
-| Google Fonts CDN | `next/font/google` (Playfair Display) |
+| Google Fonts CDN | `next/font/google` (Playfair Display headings, Inter body fallback) |
 | Unsplash / Base44 CDN images | Local assets under `frontend/public/images/` (hero galloping horse, seed photos) |
 
 The luxury visual design is ported natively into `frontend/` (gold primary, Playfair headings, hero home page, site footer, enhanced cards).

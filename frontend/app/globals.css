@@ -56,10 +56,12 @@
   --content-max-wide: 1280px;
   --header-height: 80px;
 
-  /* Typography */
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  /* Typography — system UI on Apple; Inter via next/font elsewhere */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", var(--font-inter),
+    "Segoe UI", system-ui, sans-serif;
   --font-heading: var(--font-playfair), Georgia, "Times New Roman", serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --text-xs: 12px;
   --text-sm: 14px;
   --text-base: 16px;

@@ -61,6 +61,7 @@
   font-weight: var(--font-heading-weight);
   letter-spacing: var(--letter-spacing-hero);
   line-height: 1.2;
+  text-transform: uppercase;
   margin-bottom: var(--space-5);
 }
 

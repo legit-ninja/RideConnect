@@ -24,14 +24,15 @@ After `make seed`, all email users use password `password123`:
 
 | Email | Roles | Verification | Use for |
 |-------|-------|--------------|---------|
-| `rider.verified@example.com` | rider | verified | Browse, request paid rides |
-| `owner.verified@example.com` | owner | verified | Approve bookings, friend invites |
-| `both.verified@example.com` | rider + owner | verified | Typical dual-role user |
-| `owner.verified2@example.com` | owner | verified | Stable operator (many listings) |
+| `rider.verified@example.com` | rider (Beginner skill) | verified | Browse, request paid rides; skill-mismatch booking as rider |
+| `owner.verified@example.com` | owner, riding instructor | verified | Approve bookings, friend invites; instructor (not admin-verified) |
+| `both.verified@example.com` | rider + owner (Intermediate skill) | verified | Dual-role user; confirmed skill via owner reviews |
+| `owner.verified2@example.com` | owner, verified trainer | verified | Advanced listings, skill-warning inbox, admin flag target |
 | `rider.unverified@example.com` | rider | unverified | Blocked booking flow |
 | `owner.pending@example.com` | owner | pending | Blocked hosting |
 | `minor.rider@example.com` | rider (minor) | unverified | Guardian warning |
-| `guardian@example.com` | rider + owner | verified | Linked guardian for minor |
+| `minor.rider2@example.com` … `minor.rider4@example.com` | rider (minor) | verified | Trainer minor-skew flag fixtures |
+| `guardian@example.com` | rider + owner | verified | Linked guardian for minors |
 | `oauth.only@example.com` | — | unverified | OAuth only (no password) |
 
 **Admin login** (from `.env`, not seed — password is **not** `password123`):
@@ -44,10 +45,23 @@ After `make seed`, all email users use password `password123`:
 
 - Accepted friend invite: `owner.verified` → `rider.verified`
 - Pending invite (blocked until verified): `owner.verified` → `rider.unverified`
-- Sample bookings: pending paid, approved, and declined examples on seeded listings
+- Sample bookings: pending paid, approved, declined, and **skill-mismatch pending** (`rider.verified` → Comet day rental, min Advanced Intermediate)
+- Completed bookings with owner-observed reviews for `both.verified` (enables **Confirmed Intermediate** on counterparty profile)
 - Open availability slots on select listings for the next 14 days (calendar discovery)
+- **Public listing community fields**: browse Comet or Shadow listings for min skill, weight limit, tack expectations, and verified-trainer badge (`owner.verified2`)
+- **Location privacy**: Star’s listing uses a street address in seed data; public page shows city-only label
+- **Admin flags**: `/admin/flags` includes `minor_invite_skew` for `owner.verified2@example.com` (trainer with disproportionate minor friend connections)
 
-**Bulk accounts** (`bulk.rider.*`, `bulk.owner.*`, `bulk.both.*`) are for admin UI preview only (pagination, owner animal counts). Use the persona emails above for marketplace walkthroughs.
+**Walkthrough hints:**
+
+| Goal | Login | Where |
+|------|-------|-------|
+| Owner inbox skill warning | `owner.verified2@example.com` | `/owner/bookings` — pending Comet rental request |
+| Public gear/skill requirements | (no login) | Public listing slug for Comet or Shadow |
+| Counterparty confirmed skill | `owner.verified@example.com` or `owner.verified2@example.com` | `GET /users/{both_verified_id}/counterparty` or connected booking UI |
+| Trainer verification toggle | `admin@example.com` | `/admin/users` → user detail |
+
+**Bulk accounts** (`bulk.rider.*`, `bulk.owner.*`, `bulk.both.*`) include varied rider skill levels, trainer self-reports, and listing community fields for admin/search UI density. Use the persona emails above for focused marketplace walkthroughs.
 
 ## Routes
 

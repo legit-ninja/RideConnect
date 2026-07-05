@@ -14,13 +14,16 @@ from app.db import SessionLocal
 from app.models.animal import Animal
 from app.models.booking_request import BookingRequest, BookingStatus, PaymentType
 from app.models.friend_invite import FriendInvite, FriendInviteStatus
-from app.models.listing import ActivityType, Listing
+from app.models.listing import ActivityType, Listing, TackProvided
 from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.oauth_account import OAuthAccount, OAuthProvider
+from app.models.review import ModerationStatus, Review
+from app.models.rider_skill import RiderSkillLevel
 from app.models.species import Species
 from app.models.user import User, VerificationStatus
-from app.config import settings
-from app.services.public_location import jitter_coordinates
+from app.services.flags import maybe_flag_trainer_minor_skew
+from app.services.public_location import default_display_location, jitter_coordinates
+from app.services.security import hash_password
 from app.services.slug import generate_listing_slug
 
 DEV_PASSWORD = "password123"
@@ -37,6 +40,9 @@ USER_IDS = {
     "guardian": uuid.UUID("11111111-1111-4111-8111-111111111108"),
     "minor_rider": uuid.UUID("11111111-1111-4111-8111-111111111109"),
     "both_verified": uuid.UUID("11111111-1111-4111-8111-111111111110"),
+    "minor_rider_2": uuid.UUID("11111111-1111-4111-8111-111111111111"),
+    "minor_rider_3": uuid.UUID("11111111-1111-4111-8111-111111111112"),
+    "minor_rider_4": uuid.UUID("11111111-1111-4111-8111-111111111113"),
 }
 
 PLACEHOLDER_PHOTO = "https://placehold.co/600x400/e8e8e8/666?text=RideConnect"
@@ -106,6 +112,19 @@ BULK_ACTIVITY_TYPES = [
     ActivityType.DAY_RENTAL,
 ]
 
+_BULK_MIN_SKILLS: tuple[int | None, ...] = (None, 1, 3, 4)
+_BULK_WEIGHTS: tuple[int | None, ...] = (None, 180, 200, 220)
+_BULK_TACK = (TackProvided.PROVIDED, TackProvided.BRING_OWN, TackProvided.EITHER)
+
+
+def _bulk_listing_community_fields(listing_idx: int) -> dict:
+    return {
+        "min_rider_skill": _BULK_MIN_SKILLS[listing_idx % len(_BULK_MIN_SKILLS)],
+        "max_rider_weight_lbs": _BULK_WEIGHTS[listing_idx % len(_BULK_WEIGHTS)],
+        "helmet_required": listing_idx % 7 != 0,
+        "tack_provided": _BULK_TACK[listing_idx % len(_BULK_TACK)],
+    }
+
 
 def _allowed() -> bool:
     return settings.seed_dev_data or settings.environment == "development"
@@ -134,6 +153,10 @@ def upsert_user(
     created_at: datetime | None = None,
     first_name: str | None = None,
     last_name: str | None = None,
+    is_horse_trainer: bool = False,
+    is_riding_instructor: bool = False,
+    trainer_verified: bool = False,
+    rider_skill_level: int | None = None,
 ) -> User:
     derived_first, derived_last = _name_from_email(email)
     first_name = first_name or derived_first
@@ -154,6 +177,10 @@ def upsert_user(
             verification_status=verification_status,
             is_minor=is_minor,
             guardian_user_id=guardian_user_id,
+            is_horse_trainer=is_horse_trainer,
+            is_riding_instructor=is_riding_instructor,
+            trainer_verified=trainer_verified,
+            rider_skill_level=rider_skill_level,
         )
         if created_at is not None:
             user.created_at = created_at
@@ -169,6 +196,10 @@ def upsert_user(
         user.verification_status = verification_status
         user.is_minor = is_minor
         user.guardian_user_id = guardian_user_id
+        user.is_horse_trainer = is_horse_trainer
+        user.is_riding_instructor = is_riding_instructor
+        user.trainer_verified = trainer_verified
+        user.rider_skill_level = rider_skill_level
         if created_at is not None:
             user.created_at = created_at
     return user
@@ -222,11 +253,13 @@ def seed_bulk_users(db) -> dict[str, User]:
             verification_status=_rider_verification(n),
             password_hash=hashed,
             created_at=_staggered_created_at(slot, total),
+            rider_skill_level=(n % 5) + 1 if n % 5 != 0 else None,
         )
         slot += 1
 
     for n in range(1, 16):
         key = f"owner_{n:02d}"
+        is_trainer = n % 3 == 0
         bulk[key] = upsert_user(
             db,
             user_id=_bulk_user_id(key),
@@ -236,11 +269,14 @@ def seed_bulk_users(db) -> dict[str, User]:
             verification_status=_owner_verification(n),
             password_hash=hashed,
             created_at=_staggered_created_at(slot, total),
+            is_horse_trainer=is_trainer and n % 2 == 0,
+            is_riding_instructor=is_trainer and n % 2 == 1,
         )
         slot += 1
 
     for n in range(1, 11):
         key = f"both_{n:02d}"
+        is_trainer = n % 3 == 0
         bulk[key] = upsert_user(
             db,
             user_id=_bulk_user_id(key),
@@ -250,6 +286,10 @@ def seed_bulk_users(db) -> dict[str, User]:
             verification_status=_both_verification(n),
             password_hash=hashed,
             created_at=_staggered_created_at(slot, total),
+            rider_skill_level=(n % 5) + 1 if n % 4 == 0 else None,
+            is_horse_trainer=is_trainer and n % 2 == 0,
+            is_riding_instructor=is_trainer and n % 2 == 1,
+            trainer_verified=n in (2, 7),
         )
         slot += 1
 
@@ -328,6 +368,7 @@ def seed_bulk_owner_assets(db, bulk: dict[str, User]) -> None:
                 "availability": "Weekends by appointment",
                 "friend_only_allowed": False,
                 "active": not inactive,
+                **_bulk_listing_community_fields(listing_idx),
             },
         )
         listing_idx += 1
@@ -344,6 +385,7 @@ def seed_users(db) -> dict[str, User]:
             is_owner=True,
             verification_status=VerificationStatus.VERIFIED,
             password_hash=hashed,
+            is_riding_instructor=True,
         ),
         "owner_verified2": upsert_user(
             db,
@@ -353,6 +395,9 @@ def seed_users(db) -> dict[str, User]:
             is_owner=True,
             verification_status=VerificationStatus.VERIFIED,
             password_hash=hashed,
+            is_horse_trainer=True,
+            is_riding_instructor=True,
+            trainer_verified=True,
         ),
         "rider_verified": upsert_user(
             db,
@@ -362,6 +407,7 @@ def seed_users(db) -> dict[str, User]:
             is_owner=False,
             verification_status=VerificationStatus.VERIFIED,
             password_hash=hashed,
+            rider_skill_level=RiderSkillLevel.BEGINNER.value,
         ),
         "owner_pending": upsert_user(
             db,
@@ -427,6 +473,46 @@ def seed_users(db) -> dict[str, User]:
             is_owner=True,
             verification_status=VerificationStatus.VERIFIED,
             password_hash=hashed,
+            rider_skill_level=RiderSkillLevel.INTERMEDIATE.value,
+        ),
+        "minor_rider_2": upsert_user(
+            db,
+            user_id=USER_IDS["minor_rider_2"],
+            email="minor.rider2@example.com",
+            is_rider=True,
+            is_owner=False,
+            verification_status=VerificationStatus.VERIFIED,
+            password_hash=hashed,
+            is_minor=True,
+            guardian_user_id=USER_IDS["guardian"],
+            first_name="Casey",
+            last_name="Minor",
+        ),
+        "minor_rider_3": upsert_user(
+            db,
+            user_id=USER_IDS["minor_rider_3"],
+            email="minor.rider3@example.com",
+            is_rider=True,
+            is_owner=False,
+            verification_status=VerificationStatus.VERIFIED,
+            password_hash=hashed,
+            is_minor=True,
+            guardian_user_id=USER_IDS["guardian"],
+            first_name="Jordan",
+            last_name="Minor",
+        ),
+        "minor_rider_4": upsert_user(
+            db,
+            user_id=USER_IDS["minor_rider_4"],
+            email="minor.rider4@example.com",
+            is_rider=True,
+            is_owner=False,
+            verification_status=VerificationStatus.VERIFIED,
+            password_hash=hashed,
+            is_minor=True,
+            guardian_user_id=USER_IDS["guardian"],
+            first_name="Taylor",
+            last_name="Minor",
         ),
     }
     db.flush()
@@ -475,7 +561,7 @@ def upsert_animal(db, *, key: str, owner: User, species_id: uuid.UUID, data: dic
 def upsert_listing(db, *, key: str, owner: User, animal: Animal, data: dict) -> Listing:
     listing_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"rideconnect.dev.listing.{key}")
     listing = db.get(Listing, listing_id)
-    display_location = data.pop("display_location", None) or "Appalachian NC"
+    display_location = data.pop("display_location", None) or default_display_location(animal.address)
     if listing is None:
         slug = generate_listing_slug(animal.name)
         public_lat, public_lng = jitter_coordinates(
@@ -501,8 +587,7 @@ def upsert_listing(db, *, key: str, owner: User, animal: Animal, data: dict) -> 
             listing.public_lat, listing.public_lng = jitter_coordinates(
                 animal.id, animal.lat, animal.lng, settings.location_jitter_secret
             )
-        if not listing.display_location:
-            listing.display_location = display_location
+        listing.display_location = display_location
         for field, value in data.items():
             setattr(listing, field, value)
     return listing
@@ -524,7 +609,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "description": "Calm trail horse, great for beginners on mountain paths.",
                 "lat": 36.2168,
                 "lng": -81.6746,
-                "address": "Boone, NC 28607",
+                "address": "742 Mountain Rd, Boone, NC 28607",
                 "photo_urls": [PLACEHOLDER_PHOTO],
                 "riding_styles": ["western"],
             },
@@ -584,7 +669,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "description": "Day rental available for experienced riders.",
                 "lat": 35.6009,
                 "lng": -82.5540,
-                "address": "Asheville, NC 28801",
+                "address": "88 Riverside Dr, Asheville, NC 28801",
                 "photo_urls": [PLACEHOLDER_PHOTO],
                 "riding_styles": ["western"],
             },
@@ -874,8 +959,54 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
         ),
     ]
 
+    _CURATED_LISTING_COMMUNITY: dict[str, dict] = {
+        "star-trail": {
+            "min_rider_skill": RiderSkillLevel.BEGINNER.value,
+            "helmet_required": True,
+            "tack_provided": TackProvided.PROVIDED,
+        },
+        "star-lesson": {
+            "min_rider_skill": RiderSkillLevel.BEGINNER.value,
+            "max_rider_weight_lbs": 200,
+            "helmet_required": True,
+            "tack_provided": TackProvided.PROVIDED,
+        },
+        "willow-lesson": {
+            "min_rider_skill": RiderSkillLevel.BEGINNER.value,
+            "max_rider_weight_lbs": 220,
+            "helmet_required": True,
+            "tack_provided": TackProvided.PROVIDED,
+        },
+        "rusty-lesson": {
+            "min_rider_skill": RiderSkillLevel.INTERMEDIATE.value,
+            "helmet_required": True,
+            "tack_provided": TackProvided.EITHER,
+        },
+        "daisy-lesson": {
+            "min_rider_skill": RiderSkillLevel.INTERMEDIATE.value,
+            "helmet_required": True,
+            "tack_provided": TackProvided.EITHER,
+        },
+        "comet-rental": {
+            "min_rider_skill": RiderSkillLevel.ADVANCED_INTERMEDIATE.value,
+            "max_rider_weight_lbs": 180,
+            "helmet_required": True,
+            "tack_provided": TackProvided.BRING_OWN,
+        },
+        "shadow-lease": {
+            "min_rider_skill": RiderSkillLevel.ADVANCED_INTERMEDIATE.value,
+            "max_rider_weight_lbs": 175,
+            "helmet_required": True,
+            "tack_provided": TackProvided.BRING_OWN,
+        },
+        "star-friend": {"min_rider_skill": RiderSkillLevel.BEGINNER.value},
+        "rusty-friend": {"min_rider_skill": RiderSkillLevel.BEGINNER.value},
+        "river-friend": {"min_rider_skill": RiderSkillLevel.BEGINNER.value},
+    }
+
     for key, animal, owner, data in listings_data:
-        upsert_listing(db, key=key, owner=owner, animal=animal, data=data)
+        merged = {**data, **_CURATED_LISTING_COMMUNITY.get(key, {})}
+        upsert_listing(db, key=key, owner=owner, animal=animal, data=merged)
 
 
 def upsert_availability_slot(
@@ -927,7 +1058,16 @@ def seed_availability_slots(db) -> None:
             )
 
 
-def upsert_friend_invite(db, *, key: str, owner: User, rider: User | None, email: str, status: FriendInviteStatus) -> FriendInvite:
+def upsert_friend_invite(
+    db,
+    *,
+    key: str,
+    owner: User,
+    rider: User | None,
+    email: str,
+    status: FriendInviteStatus,
+    created_at: datetime | None = None,
+) -> FriendInvite:
     invite_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"rideconnect.dev.friend.{key}")
     invite = db.get(FriendInvite, invite_id)
     if invite is None:
@@ -938,18 +1078,27 @@ def upsert_friend_invite(db, *, key: str, owner: User, rider: User | None, email
             invitee_email=email.lower(),
             status=status,
         )
+        if created_at is not None:
+            invite.created_at = created_at
+            invite.invited_at = created_at
         db.add(invite)
     else:
         invite.owner_id = owner.id
         invite.rider_id = rider.id if rider else None
         invite.invitee_email = email.lower()
         invite.status = status
+        if created_at is not None:
+            invite.created_at = created_at
+            invite.invited_at = created_at
     return invite
 
 
-def seed_friend_invites(db, users: dict[str, User]) -> None:
+def seed_friend_invites(db, users: dict[str, User], bulk: dict[str, User]) -> None:
     owner = users["owner_verified"]
+    trainer_owner = users["owner_verified2"]
     rider = users["rider_verified"]
+    recent = datetime.now(UTC) - timedelta(days=14)
+
     upsert_friend_invite(
         db,
         key="owner-rider-accepted",
@@ -966,6 +1115,32 @@ def seed_friend_invites(db, users: dict[str, User]) -> None:
         email=users["rider_unverified"].email,
         status=FriendInviteStatus.PENDING_OWNER_CONFIRM,
     )
+
+    for idx, minor_key in enumerate(("minor_rider_2", "minor_rider_3", "minor_rider_4"), start=1):
+        minor = users[minor_key]
+        upsert_friend_invite(
+            db,
+            key=f"trainer-minor-{idx}",
+            owner=trainer_owner,
+            rider=minor,
+            email=minor.email,
+            status=FriendInviteStatus.ACTIVE,
+            created_at=recent - timedelta(days=idx),
+        )
+
+    for idx, bulk_key in enumerate(("rider_01", "rider_02"), start=1):
+        adult = bulk[bulk_key]
+        upsert_friend_invite(
+            db,
+            key=f"trainer-adult-{idx}",
+            owner=trainer_owner,
+            rider=adult,
+            email=adult.email,
+            status=FriendInviteStatus.ACTIVE,
+            created_at=recent - timedelta(days=idx + 3),
+        )
+
+    maybe_flag_trainer_minor_skew(db, trainer_owner.id)
 
 
 def upsert_booking(db, *, key: str, listing: Listing, rider: User, status: BookingStatus, payment_type: PaymentType, note: str | None = None) -> BookingRequest:
@@ -995,8 +1170,12 @@ def upsert_booking(db, *, key: str, listing: Listing, rider: User, status: Booki
 def seed_booking_requests(db, users: dict[str, User]) -> None:
     star_trail_id = uuid.uuid5(uuid.NAMESPACE_DNS, "rideconnect.dev.listing.star-trail")
     rusty_lesson_id = uuid.uuid5(uuid.NAMESPACE_DNS, "rideconnect.dev.listing.rusty-lesson")
+    comet_rental_id = uuid.uuid5(uuid.NAMESPACE_DNS, "rideconnect.dev.listing.comet-rental")
+    daisy_trail_id = uuid.uuid5(uuid.NAMESPACE_DNS, "rideconnect.dev.listing.daisy-trail")
     star_trail = db.get(Listing, star_trail_id)
     rusty_lesson = db.get(Listing, rusty_lesson_id)
+    comet_rental = db.get(Listing, comet_rental_id)
+    daisy_trail = db.get(Listing, daisy_trail_id)
     if star_trail is None or rusty_lesson is None:
         return
     rider = users["rider_verified"]
@@ -1026,6 +1205,105 @@ def seed_booking_requests(db, users: dict[str, User]) -> None:
         payment_type=PaymentType.PAID,
         note="Schedule conflict",
     )
+    if comet_rental is not None:
+        upsert_booking(
+            db,
+            key="skill-mismatch-pending",
+            listing=comet_rental,
+            rider=rider,
+            status=BookingStatus.PENDING_OWNER,
+            payment_type=PaymentType.PAID,
+            note="Interested in a full-day rental",
+        )
+    if daisy_trail is not None:
+        upsert_booking(
+            db,
+            key="completed-daisy-trail",
+            listing=daisy_trail,
+            rider=users["both_verified"],
+            status=BookingStatus.COMPLETED,
+            payment_type=PaymentType.PAID,
+        )
+        upsert_booking(
+            db,
+            key="completed-rusty-lesson",
+            listing=rusty_lesson,
+            rider=users["both_verified"],
+            status=BookingStatus.COMPLETED,
+            payment_type=PaymentType.PAID,
+        )
+
+
+def upsert_review(
+    db,
+    *,
+    key: str,
+    booking: BookingRequest,
+    reviewer: User,
+    reviewee: User,
+    rating: int,
+    observed_rider_skill: int | None = None,
+    body: str | None = None,
+    published_at: datetime | None = None,
+) -> Review:
+    review_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"rideconnect.dev.review.{key}")
+    review = db.get(Review, review_id)
+    if review is None:
+        review = Review(
+            id=review_id,
+            booking_request_id=booking.id,
+            reviewer_id=reviewer.id,
+            reviewee_id=reviewee.id,
+            rating=rating,
+            body=body,
+            observed_rider_skill=observed_rider_skill,
+            moderation_status=ModerationStatus.APPROVED,
+            published_at=published_at or datetime.now(UTC),
+        )
+        db.add(review)
+    else:
+        review.booking_request_id = booking.id
+        review.reviewer_id = reviewer.id
+        review.reviewee_id = reviewee.id
+        review.rating = rating
+        review.body = body
+        review.observed_rider_skill = observed_rider_skill
+        review.moderation_status = ModerationStatus.APPROVED
+        review.published_at = published_at or datetime.now(UTC)
+    return review
+
+
+def seed_reviews(db, users: dict[str, User]) -> None:
+    daisy_booking_id = uuid.uuid5(uuid.NAMESPACE_DNS, "rideconnect.dev.booking.completed-daisy-trail")
+    rusty_booking_id = uuid.uuid5(uuid.NAMESPACE_DNS, "rideconnect.dev.booking.completed-rusty-lesson")
+    daisy_booking = db.get(BookingRequest, daisy_booking_id)
+    rusty_booking = db.get(BookingRequest, rusty_booking_id)
+    if daisy_booking is None or rusty_booking is None:
+        return
+    rider = users["both_verified"]
+    published = datetime.now(UTC) - timedelta(days=7)
+    upsert_review(
+        db,
+        key="owner2-observed-both",
+        booking=daisy_booking,
+        reviewer=users["owner_verified2"],
+        reviewee=rider,
+        rating=5,
+        observed_rider_skill=RiderSkillLevel.INTERMEDIATE.value,
+        body="Solid intermediate rider on the trail.",
+        published_at=published,
+    )
+    upsert_review(
+        db,
+        key="owner1-observed-both",
+        booking=rusty_booking,
+        reviewer=users["owner_verified"],
+        reviewee=rider,
+        rating=4,
+        observed_rider_skill=RiderSkillLevel.INTERMEDIATE.value,
+        body="Handled the lesson horse confidently.",
+        published_at=published,
+    )
 
 
 def run_seed() -> None:
@@ -1040,8 +1318,9 @@ def run_seed() -> None:
         seed_animals_and_listings(db, users)
         seed_availability_slots(db)
         seed_bulk_owner_assets(db, bulk)
-        seed_friend_invites(db, users)
+        seed_friend_invites(db, users, bulk)
         seed_booking_requests(db, users)
+        seed_reviews(db, users)
         db.commit()
         print("Dev seed complete.")
         print(f"Dev password for email users: {DEV_PASSWORD}")

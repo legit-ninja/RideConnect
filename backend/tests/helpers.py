@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models.animal import Animal
-from app.models.listing import ActivityType, Listing
+from app.models.listing import ActivityType, Listing, TackProvided
 from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.user import User
 from app.config import settings
@@ -25,6 +25,10 @@ def seed_test_listing(
     lat: float = 36.2,
     lng: float = -81.6,
     address: str = "Boone, NC",
+    min_rider_skill: int | None = None,
+    max_rider_weight_lbs: int | None = None,
+    helmet_required: bool = True,
+    tack_provided: TackProvided = TackProvided.EITHER,
 ) -> Listing:
     animal = Animal(
         owner_id=owner.id,
@@ -52,6 +56,10 @@ def seed_test_listing(
         display_location=default_display_location(address),
         public_lat=public_lat,
         public_lng=public_lng,
+        min_rider_skill=min_rider_skill,
+        max_rider_weight_lbs=max_rider_weight_lbs,
+        helmet_required=helmet_required,
+        tack_provided=tack_provided,
     )
     db.add(listing)
     db.commit()

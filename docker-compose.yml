@@ -29,6 +29,7 @@ services:
     environment:
       DATABASE_URL: postgresql://rideconnect:rideconnect@host.docker.internal:5432/rideconnect
       CORS_ORIGINS: http://localhost:3000
+      LOCATION_JITTER_SECRET: dev-change-me
     depends_on:
       db:
         condition: service_healthy

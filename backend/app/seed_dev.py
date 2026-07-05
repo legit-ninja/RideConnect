@@ -19,6 +19,7 @@ from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotSt
 from app.models.oauth_account import OAuthAccount, OAuthProvider
 from app.models.species import Species
 from app.models.user import User, VerificationStatus
+from app.config import settings
 from app.services.public_location import jitter_coordinates
 from app.services.slug import generate_listing_slug
 
@@ -477,7 +478,9 @@ def upsert_listing(db, *, key: str, owner: User, animal: Animal, data: dict) -> 
     display_location = data.pop("display_location", None) or "Appalachian NC"
     if listing is None:
         slug = generate_listing_slug(animal.name)
-        public_lat, public_lng = jitter_coordinates(animal.lat, animal.lng)
+        public_lat, public_lng = jitter_coordinates(
+            animal.id, animal.lat, animal.lng, settings.location_jitter_secret
+        )
         listing = Listing(
             id=listing_id,
             animal_id=animal.id,
@@ -495,7 +498,9 @@ def upsert_listing(db, *, key: str, owner: User, animal: Animal, data: dict) -> 
         if not listing.slug:
             listing.slug = generate_listing_slug(animal.name)
         if listing.public_lat is None or listing.public_lng is None:
-            listing.public_lat, listing.public_lng = jitter_coordinates(animal.lat, animal.lng)
+            listing.public_lat, listing.public_lng = jitter_coordinates(
+                animal.id, animal.lat, animal.lng, settings.location_jitter_secret
+            )
         if not listing.display_location:
             listing.display_location = display_location
         for field, value in data.items():

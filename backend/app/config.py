@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     weather_timezone: str = "America/New_York"
     weather_cache_ttl_seconds: int = 10800
 
+    location_jitter_secret: str = "dev-change-me"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

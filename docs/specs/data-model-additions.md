@@ -169,3 +169,44 @@ erDiagram
   location straight past the display_location protections — Pillow:
   `Image.open(f).save(out, exif=b"")`).
 - `moderation_status` present from day one even if auto-approved initially.
+
+## Trust, safety & community-fit additions (2026-07)
+
+### USER changes (replaces `is_trainer`)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `is_horse_trainer` | bool | Self-reported; display only |
+| `is_riding_instructor` | bool | Self-reported; display only |
+| `trainer_verified` | bool | Admin-set; verified badge on public listing when true |
+| `rider_skill_level` | smallint nullable | 1–5 ordered enum; self-reported label |
+
+Migration `015`: maps legacy `is_trainer=true` → both flags + admin-review platform flag.
+
+**Host capability** derives from `is_owner` only — trainer flags never grant listing/slot access.
+
+### LISTING community fields (migration `016`)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `min_rider_skill` | smallint nullable | Public via `PublicListing`; booking warning if rider below |
+| `max_rider_weight_lbs` | int nullable | Public; horse-welfare field |
+| `helmet_required` | bool default true | Public |
+| `tack_provided` | enum | `provided` \| `bring_own` \| `either`; public label only |
+
+### REVIEW observed skill (migration `017`)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `observed_rider_skill` | smallint nullable | Owner-only on completed booking review of rider |
+
+### Location (migration `018` + config)
+
+- `LOCATION_JITTER_SECRET` env var — deterministic per-`animal_id` jitter (5–8 km).
+- `display_location` rejects street-like comma segments; falls back to `Appalachian NC`.
+- Backfill recomputes `public_lat/lng` and `display_location` for all listings.
+
+### Platform flags
+
+- `trainer_self_report` — migration audit queue for legacy trainers.
+- `minor_invite_skew` — trainer/instructor accounts with minor-heavy counterparties.

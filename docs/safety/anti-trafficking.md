@@ -16,7 +16,7 @@ RideConnect must not be usable for human or animal trafficking or for arrangemen
 
 5. **Reporting** — Report control on every profile, listing, and booking; admin review queue.
 
-6. **Pattern flags (MVP, simple)** — Examples: new account immediately attempting off-platform contact; owner with unusually high volume of minor friend invites or invite-token redemptions skewing toward minors; owner exceeding invite-token rate limits (>10 active tokens, or >25 redemptions in 30 days → auto-queue for admin review).
+6. **Pattern flags (MVP, simple)** — Examples: new account immediately attempting off-platform contact; owner with unusually high volume of minor friend invites or invite-token redemptions skewing toward minors; **trainer/instructor self-reports with minor-skewed counterparties** (≥5 interactions in 90 days and ≥50% minors → `minor_invite_skew`); owner exceeding invite-token rate limits (>10 active tokens, or >25 redemptions in 30 days → auto-queue for admin review).
 
 ## Public surfaces (listings, invite landing pages, future public profiles)
 
@@ -61,4 +61,5 @@ communities. They are **inbound funnels only** and follow these rules:
 - [Liability](liability.md)
 - [Public Listings & Invite Links spec](../specs/public-listings-and-invite-links-spec.md)
 - [Data model additions](../specs/data-model-additions.md)
+- [Free launch strategy](../strategy/free-launch-strategy.md)
 - Engineering: `.cursor/rules/rideconnect-mvp.mdc`

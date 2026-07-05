@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import {
   auditActionLabel,
   formatAuthMethod,
+  formatTrainerSelfReport,
 } from "@/components/admin/adminLabels";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
@@ -22,6 +23,7 @@ import {
   fetchAdminAudit,
   fetchAdminUser,
   updateUserRoles,
+  updateTrainerVerification,
   updateUserVerification,
 } from "@/lib/api";
 import { useAdminAuth } from "@/lib/useAdminAuth";
@@ -44,7 +46,7 @@ export function AdminUserDetailContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isRider, setIsRider] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
-  const [isTrainer, setIsTrainer] = useState(false);
+  const [trainerVerified, setTrainerVerified] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
@@ -56,7 +58,7 @@ export function AdminUserDetailContent() {
         setUser(detail);
         setIsRider(detail.is_rider);
         setIsOwner(detail.is_owner);
-        setIsTrainer(detail.is_trainer);
+        setTrainerVerified(detail.trainer_verified);
       })
       .catch((err: unknown) => {
         if (err instanceof ApiError) {
@@ -126,10 +128,29 @@ export function AdminUserDetailContent() {
       const updated = await updateUserRoles(token, user.id, {
         is_rider: isRider,
         is_owner: isOwner,
-        is_trainer: isTrainer,
       });
       setUser(updated);
       setSuccess("Roles updated. Action logged.");
+      loadUser();
+    } catch (err: unknown) {
+      setError(err instanceof ApiError ? err.message : "Update failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleTrainerVerifiedSave() {
+    if (!token || !user) return;
+    setBusy(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const updated = await updateTrainerVerification(token, user.id, {
+        trainer_verified: trainerVerified,
+        note: note.trim() || undefined,
+      });
+      setUser(updated);
+      setSuccess("Trainer verification updated.");
       loadUser();
     } catch (err: unknown) {
       setError(err instanceof ApiError ? err.message : "Update failed.");
@@ -297,14 +318,6 @@ export function AdminUserDetailContent() {
               />{" "}
               Owner
             </label>
-            <label>
-              <input
-                type="checkbox"
-                checked={isTrainer}
-                onChange={(event) => setIsTrainer(event.target.checked)}
-              />{" "}
-              Trainer
-            </label>
             <button
               type="button"
               className={styles.button}
@@ -312,6 +325,31 @@ export function AdminUserDetailContent() {
               onClick={handleRolesSave}
             >
               Save roles
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Trainer claims</h2>
+        <div className={styles.card}>
+          <p>{formatTrainerSelfReport(user)}</p>
+          <div className={styles.toolbar}>
+            <label>
+              <input
+                type="checkbox"
+                checked={trainerVerified}
+                onChange={(event) => setTrainerVerified(event.target.checked)}
+              />{" "}
+              Verified trainer badge (admin only)
+            </label>
+            <button
+              type="button"
+              className={styles.button}
+              disabled={busy}
+              onClick={handleTrainerVerifiedSave}
+            >
+              Save trainer verification
             </button>
           </div>
         </div>

@@ -151,10 +151,10 @@ export function UserMenu({ user: userProp }: UserMenuProps) {
             </>
           ) : null}
 
-          {user.is_owner || user.is_trainer ? (
+          {user.is_owner ? (
             <>
               <div className={styles.itemGroupLabel}>
-                {user.is_trainer && !user.is_owner ? "Trainer" : "Host"}
+                Host
               </div>
               <Link href="/owner/listings" className={styles.item} onClick={closeMenu}>
                 Manage listings

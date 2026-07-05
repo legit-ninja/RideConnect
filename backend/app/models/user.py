@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, SmallInteger, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,7 +26,10 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_rider: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_owner: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    is_trainer: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_horse_trainer: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_riding_instructor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    trainer_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    rider_skill_level: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     verification_status: Mapped[VerificationStatus] = mapped_column(
         Enum(

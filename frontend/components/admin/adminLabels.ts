@@ -13,13 +13,22 @@ const ACTIVITY_LABEL: Record<string, string> = {
 };
 
 export function formatRoles(
-  user: Pick<AdminUserSummary, "is_rider" | "is_owner" | "is_trainer">,
+  user: Pick<AdminUserSummary, "is_rider" | "is_owner">,
 ): string {
   const roles: string[] = [];
   if (user.is_rider) roles.push("Rider");
   if (user.is_owner) roles.push("Owner");
-  if (user.is_trainer) roles.push("Trainer");
   return roles.length > 0 ? roles.join(" · ") : "—";
+}
+
+export function formatTrainerSelfReport(
+  user: Pick<AdminUserSummary, "is_horse_trainer" | "is_riding_instructor" | "trainer_verified">,
+): string {
+  const parts: string[] = [];
+  if (user.is_horse_trainer) parts.push("Horse trainer (self-reported)");
+  if (user.is_riding_instructor) parts.push("Riding instructor (self-reported)");
+  if (user.trainer_verified) parts.push("Verified trainer");
+  return parts.length > 0 ? parts.join(" · ") : "—";
 }
 
 export function formatAuthMethod(oauthProviders: string[]): string {

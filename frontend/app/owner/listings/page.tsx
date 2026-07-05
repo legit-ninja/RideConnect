@@ -35,7 +35,7 @@ export default function OwnerListingsPage() {
     fetchCurrentUser(token)
       .then((currentUser) => {
         setUser(currentUser);
-        if (!currentUser.is_owner && !currentUser.is_trainer) {
+        if (!currentUser.is_owner) {
           router.replace("/dashboard");
           return null;
         }

@@ -115,9 +115,9 @@ export default function DashboardPage() {
           </article>
         ) : null}
 
-        {isVerified && (user.is_owner || user.is_trainer) ? (
+        {isVerified && user.is_owner ? (
           <article className={styles.hubCard}>
-            <h3>{user.is_trainer && !user.is_owner ? "Trainer hub" : "Owner hub"}</h3>
+            <h3>Owner hub</h3>
             <p>Manage animals, listings, availability, and booking requests.</p>
             <Link href="/owner/listings" className={styles.button}>
               Manage listings
@@ -125,7 +125,7 @@ export default function DashboardPage() {
           </article>
         ) : null}
 
-        {user.is_owner || user.is_trainer ? (
+        {user.is_owner ? (
           <article className={styles.hubCard}>
             <h3>Booking inbox</h3>
             <p>Review and respond to rider requests.</p>

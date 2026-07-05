@@ -25,6 +25,7 @@ from app.schemas.admin import (
     AdminUserSummary,
     UpdateListingActiveRequest,
     UpdateUserRolesRequest,
+    UpdateTrainerVerificationRequest,
     UpdateVerificationRequest,
 )
 from app.services.admin_audit import list_audit_logs, log_admin_action
@@ -206,11 +207,9 @@ def admin_update_roles(
     previous_roles = {
         "is_rider": user.is_rider,
         "is_owner": user.is_owner,
-        "is_trainer": user.is_trainer,
     }
     user.is_rider = payload.is_rider
     user.is_owner = payload.is_owner
-    user.is_trainer = payload.is_trainer
 
     log_admin_action(
         db,
@@ -222,8 +221,48 @@ def admin_update_roles(
             "new": {
                 "is_rider": payload.is_rider,
                 "is_owner": payload.is_owner,
-                "is_trainer": payload.is_trainer,
             },
+        },
+    )
+    db.commit()
+    db.refresh(user)
+    user = get_user_detail(db, user_id)
+    assert user is not None
+    animal_count, listing_count, active_listing_count = get_user_marketplace_counts(
+        db, user.id
+    )
+    return user_to_detail(
+        user,
+        animal_count=animal_count,
+        listing_count=listing_count,
+        active_listing_count=active_listing_count,
+    )
+
+
+@router.patch("/users/{user_id}/trainer-verification", response_model=AdminUserDetail)
+def admin_update_trainer_verification(
+    user_id: UUID,
+    payload: UpdateTrainerVerificationRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> AdminUserDetail:
+    # Authz: require_admin — admins may set verified-trainer badge (credential tier placeholder).
+    user = get_user_detail(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    previous = user.trainer_verified
+    user.trainer_verified = payload.trainer_verified
+    log_admin_action(
+        db,
+        actor=admin,
+        action=AdminAuditAction.USER_ROLES_CHANGED,
+        target_user_id=user.id,
+        metadata={
+            "field": "trainer_verified",
+            "previous": previous,
+            "new": payload.trainer_verified,
+            "note": payload.note,
         },
     )
     db.commit()

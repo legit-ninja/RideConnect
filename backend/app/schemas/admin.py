@@ -28,10 +28,13 @@ class AdminUserSummary(BaseModel):
     email: str
     is_rider: bool
     is_owner: bool
-    is_trainer: bool
+    is_horse_trainer: bool
+    is_riding_instructor: bool
+    trainer_verified: bool
     is_admin: bool
     verification_status: VerificationStatus
     is_minor: bool
+    rider_skill_level: int | None = None
     oauth_providers: list[OAuthProvider]
     created_at: datetime
 
@@ -97,7 +100,11 @@ class UpdateVerificationRequest(BaseModel):
 class UpdateUserRolesRequest(BaseModel):
     is_rider: bool
     is_owner: bool
-    is_trainer: bool
+
+
+class UpdateTrainerVerificationRequest(BaseModel):
+    trainer_verified: bool
+    note: str | None = Field(default=None, max_length=500)
 
 
 class AdminAuditLogEntry(BaseModel):

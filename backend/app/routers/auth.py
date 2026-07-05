@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.dependencies import get_current_user, require_verified
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UpdateProfileRequest, UserResponse
 from app.services.events import log_event
 from app.services.security import create_access_token, hash_password, verify_password
 from app.services.storage import get_public_url, put_object
@@ -53,7 +53,6 @@ def register(
         last_name=payload.last_name.strip(),
         is_rider=payload.is_rider,
         is_owner=payload.is_owner,
-        is_trainer=payload.is_trainer,
         is_admin=False,
     )
     db.add(user)
@@ -91,6 +90,24 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 @router.get("/me", response_model=UserResponse)
 def me(current_user: User = Depends(get_current_user)) -> UserResponse:
     # Authz: bearer token must map to an existing user; any authenticated user may read self.
+    return _to_user_response(current_user)
+
+
+@router.patch("/me/profile", response_model=UserResponse)
+def update_my_profile(
+    payload: UpdateProfileRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    # Authz: users may update self-reported trainer flags and rider skill only.
+    if payload.is_horse_trainer is not None:
+        current_user.is_horse_trainer = payload.is_horse_trainer
+    if payload.is_riding_instructor is not None:
+        current_user.is_riding_instructor = payload.is_riding_instructor
+    if payload.rider_skill_level is not None:
+        current_user.rider_skill_level = payload.rider_skill_level
+    db.commit()
+    db.refresh(current_user)
     return _to_user_response(current_user)
 
 

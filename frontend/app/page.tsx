@@ -2,10 +2,9 @@ import Link from "next/link";
 
 import { ListingCard } from "@/components/marketplace/ListingCard";
 import type { ListingSummary } from "@/lib/api";
+import { getServerApiUrl } from "@/lib/server-api";
 
 import styles from "./page.module.css";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 const STEPS = [
   {
@@ -51,7 +50,7 @@ const VALUES = [
 
 async function loadFeaturedListings(): Promise<ListingSummary[]> {
   try {
-    const response = await fetch(`${API_URL}/listings`, { next: { revalidate: 60 } });
+    const response = await fetch(`${getServerApiUrl()}/listings`, { next: { revalidate: 60 } });
     if (!response.ok) return [];
     const listings = (await response.json()) as ListingSummary[];
     return listings.slice(0, 6);

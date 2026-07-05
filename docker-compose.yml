@@ -41,10 +41,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    ports:
-      - "3000:3000"
+    # Host network lets SSR reach API on localhost:8000 when API runs via `make dev-api`
+    # (Snap Docker blocks container→host port forwarding on host.docker.internal).
+    network_mode: host
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_INTERNAL_URL: http://localhost:8000
       WATCHPACK_POLLING: "true"   # needed for hot reload inside Docker on some hosts
     volumes:
       - ./frontend:/app

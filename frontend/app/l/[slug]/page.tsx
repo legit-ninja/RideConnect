@@ -7,12 +7,12 @@ import { activityTypeLabel } from "@/components/marketplace/marketplaceLabels";
 import styles from "@/components/marketplace/marketplace.module.css";
 import type { PublicListing } from "@/lib/api";
 import { buildAuthQuery } from "@/lib/funnel";
+import { getServerApiUrl } from "@/lib/server-api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 async function loadListing(slug: string): Promise<PublicListing | null> {
-  const response = await fetch(`${API_URL}/public/listings/${slug}`, {
+  const response = await fetch(`${getServerApiUrl()}/public/listings/${slug}`, {
     next: { revalidate: 60 },
   });
   if (!response.ok) return null;

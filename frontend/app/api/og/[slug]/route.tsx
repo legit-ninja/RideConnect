@@ -2,13 +2,12 @@ import { ImageResponse } from "next/og";
 
 import { activityTypeLabel } from "@/components/marketplace/marketplaceLabels";
 import type { PublicListing } from "@/lib/api";
+import { getServerApiUrl } from "@/lib/server-api";
 
 export const runtime = "edge";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 async function loadListing(slug: string): Promise<PublicListing | null> {
-  const response = await fetch(`${API_URL}/public/listings/${slug}`, {
+  const response = await fetch(`${getServerApiUrl()}/public/listings/${slug}`, {
     next: { revalidate: 300 },
   });
   if (!response.ok) return null;

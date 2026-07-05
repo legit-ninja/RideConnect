@@ -5,11 +5,10 @@ import styles from "@/components/marketplace/marketplace.module.css";
 import { InviteRedeemPanel } from "@/components/marketplace/InviteActions";
 import type { PublicInvitePreview } from "@/lib/api";
 import { buildAuthQuery } from "@/lib/funnel";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { getServerApiUrl } from "@/lib/server-api";
 
 async function loadInvite(token: string): Promise<PublicInvitePreview> {
-  const response = await fetch(`${API_URL}/public/invites/${token}`, {
+  const response = await fetch(`${getServerApiUrl()}/public/invites/${token}`, {
     next: { revalidate: 30 },
   });
   if (!response.ok) {

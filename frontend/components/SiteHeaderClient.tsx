@@ -126,6 +126,8 @@ export function SiteHeaderClient() {
     }
 
     if (user) {
+      const showCalendar =
+        user.verification_status === "verified" && (user.is_rider || user.is_owner);
       return (
         <div className={layoutStyles.navActions}>
           {!compact ? (
@@ -135,6 +137,11 @@ export function SiteHeaderClient() {
                   {link.label}
                 </Link>
               ))}
+              {showCalendar ? (
+                <Link href="/calendar" className={navLinkClass()}>
+                  Calendar
+                </Link>
+              ) : null}
             </nav>
           ) : null}
           <UserMenu user={user} />
@@ -222,15 +229,17 @@ export function SiteHeaderClient() {
               </Link>
             </>
           ) : null}
+          {user &&
+          user.verification_status === "verified" &&
+          (user.is_rider || user.is_owner) ? (
+            <Link href="/calendar" className={navLinkClass()}>
+              Calendar
+            </Link>
+          ) : null}
           {user ? (
-            <>
-              <Link href="/dashboard" className={navLinkClass()}>
-                Dashboard
-              </Link>
-              <Link href="/settings" className={navLinkClass()}>
-                Settings
-              </Link>
-            </>
+            <Link href="/dashboard" className={navLinkClass()}>
+              Dashboard
+            </Link>
           ) : null}
           <ThemeToggle />
         </div>

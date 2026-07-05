@@ -10,6 +10,7 @@ import { InlineAlert } from "@/components/marketplace/InlineAlert";
 import { ListingImage } from "@/components/marketplace/ListingImage";
 import { LoadingState } from "@/components/marketplace/LoadingState";
 import { PageHeader } from "@/components/marketplace/PageHeader";
+import { ListingSlotsSection } from "@/components/marketplace/ListingSlotsSection";
 import styles from "@/components/marketplace/marketplace.module.css";
 import {
   ApiError,
@@ -169,10 +170,11 @@ export default function EditListingPage() {
               />
             </label>
             <label>
-              Availability
+              General availability notes
               <textarea
                 name="availability"
                 rows={2}
+                placeholder="e.g. Weekends by appointment"
                 defaultValue={listing.availability ?? ""}
               />
             </label>
@@ -183,6 +185,8 @@ export default function EditListingPage() {
               Save
             </button>
           </form>
+
+          <ListingSlotsSection listingId={listing.id} />
         </>
       ) : null}
       <Link href="/owner/listings">Back</Link>

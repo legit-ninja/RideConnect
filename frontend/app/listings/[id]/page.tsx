@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
 import { BlockedAction } from "@/components/marketplace/VerificationBanner";
@@ -23,7 +23,9 @@ import { getToken } from "@/lib/auth";
 
 export default function ListingDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const slotId = searchParams.get("slot");
   const [listing, setListing] = useState<ListingDetail | null>(null);
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +65,7 @@ export default function ListingDetailPage() {
       await createBooking(token, {
         listing_id: listing.id,
         scheduled_at: scheduledAt || undefined,
+        availability_slot_id: slotId || undefined,
         note: note || undefined,
       });
       setSuccess(true);
@@ -154,6 +157,11 @@ export default function ListingDetailPage() {
             This is a verified-friends-only ride. The owner must send you a friend invite and
             you must accept before you can request this ride.
           </InlineAlert>
+          {slotId ? (
+            <InlineAlert variant="info">
+              You are requesting a specific open slot from the calendar.
+            </InlineAlert>
+          ) : null}
           <form onSubmit={handleSubmit}>
             <label>
               Preferred date (optional)
@@ -174,6 +182,12 @@ export default function ListingDetailPage() {
 
     return (
       <div className={styles.detailSection}>
+        {slotId ? (
+          <InlineAlert variant="info">
+            You are requesting a specific open slot from the calendar. Submit below to hold that
+            time with the owner.
+          </InlineAlert>
+        ) : null}
         <form onSubmit={handleSubmit}>
           <label>
             Preferred date (optional)

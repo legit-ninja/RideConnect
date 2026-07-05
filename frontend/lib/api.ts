@@ -506,6 +506,7 @@ export interface BookingRequest {
   payment_type: PaymentType;
   status: BookingStatus;
   scheduled_at: string | null;
+  availability_slot_id?: string | null;
   note: string | null;
   requested_at: string;
   listing_price: string;
@@ -558,7 +559,12 @@ export function respondFriendInvite(
 
 export function createBooking(
   token: string,
-  payload: { listing_id: string; scheduled_at?: string; note?: string },
+  payload: {
+    listing_id: string;
+    scheduled_at?: string;
+    availability_slot_id?: string;
+    note?: string;
+  },
 ): Promise<BookingRequest> {
   return request<BookingRequest>(
     "/bookings",
@@ -764,6 +770,128 @@ export function logClientEvent(
   return request<void>(
     "/events",
     { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export interface AvailabilitySlot {
+  id: string;
+  listing_id: string;
+  start_at: string;
+  end_at: string;
+  status: string;
+  capacity: number;
+  created_at: string;
+}
+
+export interface CalendarWeatherDay {
+  date: string;
+  temp_max_f: number | null;
+  temp_min_f: number | null;
+  precip_probability_max: number | null;
+  wind_speed_max_mph: number | null;
+  weather_code: number | null;
+  ride_suitability: "good" | "caution" | "poor";
+  summary: string;
+}
+
+export interface CalendarDaySummary {
+  date: string;
+  open_slot_count: number;
+  my_booking_count: number;
+  weather: CalendarWeatherDay | null;
+}
+
+export interface OpenSlotSummary {
+  id: string;
+  listing_id: string;
+  slug: string;
+  animal_name: string;
+  activity_type: ActivityType;
+  price: string;
+  display_location: string;
+  start_at: string;
+  end_at: string;
+}
+
+export interface CalendarResponse {
+  days: CalendarDaySummary[];
+  open_slots: OpenSlotSummary[];
+  my_bookings: BookingRequest[];
+  weather_error: string | null;
+}
+
+export function fetchCalendar(
+  token: string,
+  params: {
+    from: string;
+    to: string;
+    lat?: number;
+    lng?: number;
+    radius_km?: number;
+    include_open_slots?: boolean;
+  },
+): Promise<CalendarResponse> {
+  const search = new URLSearchParams();
+  search.set("from", params.from);
+  search.set("to", params.to);
+  if (params.lat !== undefined) search.set("lat", String(params.lat));
+  if (params.lng !== undefined) search.set("lng", String(params.lng));
+  if (params.radius_km !== undefined) search.set("radius_km", String(params.radius_km));
+  if (params.include_open_slots !== undefined) {
+    search.set("include_open_slots", String(params.include_open_slots));
+  }
+  return request<CalendarResponse>(`/calendar?${search.toString()}`, {}, token);
+}
+
+export function fetchOwnerListingSlots(
+  token: string,
+  listingId: string,
+  params: { from?: string; to?: string } = {},
+): Promise<AvailabilitySlot[]> {
+  const search = new URLSearchParams();
+  if (params.from) search.set("from", params.from);
+  if (params.to) search.set("to", params.to);
+  const query = search.toString();
+  const path = query
+    ? `/owner/listings/${listingId}/slots?${query}`
+    : `/owner/listings/${listingId}/slots`;
+  return request<AvailabilitySlot[]>(path, {}, token);
+}
+
+export function createOwnerListingSlot(
+  token: string,
+  listingId: string,
+  payload: { start_at: string; end_at: string; capacity?: number },
+): Promise<AvailabilitySlot> {
+  return request<AvailabilitySlot>(
+    `/owner/listings/${listingId}/slots`,
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function updateOwnerListingSlot(
+  token: string,
+  listingId: string,
+  slotId: string,
+  payload: { start_at?: string; end_at?: string; status?: "open" | "blocked" },
+): Promise<AvailabilitySlot> {
+  return request<AvailabilitySlot>(
+    `/owner/listings/${listingId}/slots/${slotId}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function deleteOwnerListingSlot(
+  token: string,
+  listingId: string,
+  slotId: string,
+): Promise<void> {
+  return request<void>(
+    `/owner/listings/${listingId}/slots/${slotId}`,
+    { method: "DELETE" },
     token,
   );
 }

@@ -85,6 +85,16 @@ export default function DashboardPage() {
           </article>
         ) : null}
 
+        {user.is_rider ? (
+          <article className={styles.hubCard}>
+            <h3>Ride calendar</h3>
+            <p>See open slots, your schedule, and local weather forecasts.</p>
+            <Link href="/calendar" className={styles.button}>
+              Open calendar
+            </Link>
+          </article>
+        ) : null}
+
         {isVerified && user.is_rider ? (
           <article className={styles.hubCard}>
             <h3>Find a ride</h3>

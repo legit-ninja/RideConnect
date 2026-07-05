@@ -15,6 +15,7 @@ class PlatformFlagType(str, enum.Enum):
     INVITE_REDEMPTION_RATE = "invite_redemption_rate"
     MINOR_INVITE_SKEW = "minor_invite_skew"
     OFF_PLATFORM_CONTACT = "off_platform_contact"
+    TRAINER_SELF_REPORT = "trainer_self_report"
 
 
 class PlatformFlag(Base):

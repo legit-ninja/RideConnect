@@ -27,7 +27,11 @@ from app.schemas.invite_token import (
 )
 from app.schemas.public_listing import PublicInvitePreview
 from app.services.events import log_event
-from app.services.flags import count_active_tokens, maybe_flag_redemption_rate
+from app.services.flags import (
+    count_active_tokens,
+    maybe_flag_redemption_rate,
+    maybe_flag_trainer_minor_skew,
+)
 from app.services.notifications import create_notification
 from app.services.public_listing import get_listing_by_slug
 from app.services.storage import get_public_url, put_object
@@ -228,6 +232,7 @@ def redeem_invite_token(
         {"friend_invite_id": str(invite.id), "rider_id": str(rider.id)},
     )
     maybe_flag_redemption_rate(db, owner_id)
+    maybe_flag_trainer_minor_skew(db, owner_id)
     db.commit()
     return {"friend_invite_id": str(invite.id), "status": invite.status.value}
 
@@ -290,6 +295,7 @@ def confirm_invite(
             f"{owner.first_name} confirmed your friend connection",
             {"friend_invite_id": str(invite.id)},
         )
+    maybe_flag_trainer_minor_skew(db, owner.id)
     db.commit()
     return {"status": invite.status.value, "thread_created": True}
 

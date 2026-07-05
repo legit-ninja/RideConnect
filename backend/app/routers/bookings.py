@@ -9,6 +9,7 @@ from app.db import get_db
 from app.dependencies import require_admin, require_owner, require_rider, require_verified
 from app.models.booking_request import BookingRequest, BookingStatus, PaymentType
 from app.models.listing import Listing
+from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.user import User
 from app.routers.friend_invites import get_active_friend_invite
 from app.schemas.booking import (
@@ -18,6 +19,7 @@ from app.schemas.booking import (
     UpdateBookingStatusRequest,
 )
 
+from app.services.calendar import get_slot_for_booking, mark_slot_booked, release_slot
 from app.services.events import log_event
 
 router = APIRouter(tags=["bookings"])
@@ -37,6 +39,7 @@ def _booking_to_response(booking: BookingRequest) -> BookingResponse:
         payment_type=booking.payment_type.value,
         status=booking.status.value,
         scheduled_at=booking.scheduled_at,
+        availability_slot_id=booking.availability_slot_id,
         note=booking.note,
         requested_at=booking.requested_at,
         listing_price=listing.price,
@@ -97,6 +100,25 @@ def create_booking(
     else:
         initial_status = BookingStatus.PENDING_PAYMENT
 
+    slot: ListingAvailabilitySlot | None = None
+    scheduled_at = payload.scheduled_at
+    if payload.availability_slot_id is not None:
+        slot = get_slot_for_booking(db, payload.availability_slot_id, listing.id)
+        if slot is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Availability slot is not open for this listing",
+            )
+        slot_start = slot.start_at
+        if slot_start.tzinfo is None:
+            slot_start = slot_start.replace(tzinfo=UTC)
+        if slot_start <= datetime.now(UTC):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Availability slot must be in the future",
+            )
+        scheduled_at = slot.start_at
+
     booking = BookingRequest(
         listing_id=listing.id,
         rider_id=rider.id,
@@ -104,10 +126,13 @@ def create_booking(
         friend_invite_id=friend_invite_id,
         payment_type=payment_type,
         status=initial_status,
-        scheduled_at=payload.scheduled_at,
+        scheduled_at=scheduled_at,
+        availability_slot_id=payload.availability_slot_id,
         note=payload.note,
     )
     db.add(booking)
+    if slot is not None:
+        slot.status = SlotStatus.HELD
     db.flush()
     log_event(db, "booking_requested", user_id=rider.id, payload={"booking_id": str(booking.id)})
     db.commit()
@@ -170,10 +195,19 @@ def update_booking_status(
                 detail="Booking cannot be approved in current status",
             )
         booking.status = BookingStatus.APPROVED
+        if booking.availability_slot_id:
+            slot = db.get(ListingAvailabilitySlot, booking.availability_slot_id)
+            mark_slot_booked(db, slot)
     elif payload.status == "declined":
         booking.status = BookingStatus.DECLINED
+        if booking.availability_slot_id:
+            slot = db.get(ListingAvailabilitySlot, booking.availability_slot_id)
+            release_slot(db, slot)
     elif payload.status == "cancelled":
         booking.status = BookingStatus.CANCELLED
+        if booking.availability_slot_id:
+            slot = db.get(ListingAvailabilitySlot, booking.availability_slot_id)
+            release_slot(db, slot)
     elif payload.status == "completed":
         if booking.status != BookingStatus.APPROVED:
             raise HTTPException(

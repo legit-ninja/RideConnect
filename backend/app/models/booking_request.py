@@ -60,6 +60,12 @@ class BookingRequest(Base):
     scheduled_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    availability_slot_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("listing_availability_slots.id"),
+        nullable=True,
+        index=True,
+    )
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -75,3 +81,4 @@ class BookingRequest(Base):
     rider = relationship("User", foreign_keys=[rider_id])
     owner = relationship("User", foreign_keys=[owner_id])
     friend_invite = relationship("FriendInvite")
+    availability_slot = relationship("ListingAvailabilitySlot")

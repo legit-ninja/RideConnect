@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     photo_moderation_enabled: bool = False
     frontend_base_url: str = "http://localhost:3000"
 
+    weather_timezone: str = "America/New_York"
+    weather_cache_ttl_seconds: int = 10800
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

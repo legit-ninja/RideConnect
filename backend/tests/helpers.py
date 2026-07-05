@@ -1,9 +1,11 @@
 from decimal import Decimal
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.models.animal import Animal
 from app.models.listing import ActivityType, Listing
+from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.user import User
 from app.services.public_location import default_display_location, jitter_coordinates
 from app.services.slug import generate_listing_slug
@@ -51,3 +53,26 @@ def seed_test_listing(
     db.commit()
     db.refresh(listing)
     return listing
+
+
+def seed_test_slot(
+    db: Session,
+    *,
+    listing: Listing,
+    days_ahead: int = 3,
+    hours: int = 10,
+    duration_hours: int = 2,
+    status: SlotStatus = SlotStatus.OPEN,
+) -> ListingAvailabilitySlot:
+    start_at = datetime.now(UTC) + timedelta(days=days_ahead, hours=hours)
+    end_at = start_at + timedelta(hours=duration_hours)
+    slot = ListingAvailabilitySlot(
+        listing_id=listing.id,
+        start_at=start_at,
+        end_at=end_at,
+        status=status,
+    )
+    db.add(slot)
+    db.commit()
+    db.refresh(slot)
+    return slot

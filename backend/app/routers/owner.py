@@ -1,6 +1,7 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -9,13 +10,20 @@ from app.db import get_db
 from app.dependencies import require_owner
 from app.models.animal import Animal
 from app.models.listing import Listing
+from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.user import User
 from app.schemas.animal import AnimalCreateRequest, AnimalResponse, AnimalUpdateRequest
+from app.schemas.availability_slot import (
+    AvailabilitySlotResponse,
+    CreateAvailabilitySlotRequest,
+    UpdateAvailabilitySlotRequest,
+)
 from app.schemas.listing import (
     ListingCreateRequest,
     ListingResponse,
     ListingUpdateRequest,
 )
+from app.services.events import log_event
 from app.services.listings import get_species_by_id
 from app.services.public_location import default_display_location, jitter_coordinates
 from app.services.slug import generate_listing_slug
@@ -254,4 +262,157 @@ def delete_owner_listing(
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
     db.delete(listing)
+    db.commit()
+
+
+@router.get("/listings/{listing_id}/slots", response_model=list[AvailabilitySlotResponse])
+def list_listing_slots(
+    listing_id: UUID,
+    from_date: datetime | None = Query(default=None, alias="from"),
+    to_date: datetime | None = Query(default=None, alias="to"),
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> list[ListingAvailabilitySlot]:
+    # Authz: verified owner may list slots for their own listing.
+    listing = _get_owner_listing(db, owner.id, listing_id)
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    stmt = select(ListingAvailabilitySlot).where(
+        ListingAvailabilitySlot.listing_id == listing_id
+    )
+    if from_date is not None:
+        stmt = stmt.where(ListingAvailabilitySlot.start_at >= from_date)
+    if to_date is not None:
+        stmt = stmt.where(ListingAvailabilitySlot.start_at <= to_date)
+    return list(
+        db.scalars(stmt.order_by(ListingAvailabilitySlot.start_at.asc())).all()
+    )
+
+
+@router.post(
+    "/listings/{listing_id}/slots",
+    response_model=AvailabilitySlotResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_listing_slot(
+    listing_id: UUID,
+    payload: CreateAvailabilitySlotRequest,
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> ListingAvailabilitySlot:
+    # Authz: verified owner may create slots for their own listing.
+    listing = _get_owner_listing(db, owner.id, listing_id)
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+    if payload.start_at <= datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Slot start must be in the future",
+        )
+
+    slot = ListingAvailabilitySlot(
+        listing_id=listing.id,
+        start_at=payload.start_at,
+        end_at=payload.end_at,
+        capacity=payload.capacity,
+        status=SlotStatus.OPEN,
+    )
+    db.add(slot)
+    db.flush()
+    log_event(
+        db,
+        "slot_created",
+        user_id=owner.id,
+        payload={"slot_id": str(slot.id), "listing_id": str(listing.id)},
+    )
+    db.commit()
+    db.refresh(slot)
+    return slot
+
+
+@router.patch(
+    "/listings/{listing_id}/slots/{slot_id}",
+    response_model=AvailabilitySlotResponse,
+)
+def update_listing_slot(
+    listing_id: UUID,
+    slot_id: UUID,
+    payload: UpdateAvailabilitySlotRequest,
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> ListingAvailabilitySlot:
+    # Authz: verified owner may update open/blocked slots on their listing.
+    listing = _get_owner_listing(db, owner.id, listing_id)
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    slot = db.scalar(
+        select(ListingAvailabilitySlot).where(
+            ListingAvailabilitySlot.id == slot_id,
+            ListingAvailabilitySlot.listing_id == listing_id,
+        )
+    )
+    if slot is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found")
+    if slot.status in (SlotStatus.HELD, SlotStatus.BOOKED):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify a held or booked slot",
+        )
+
+    if payload.start_at is not None:
+        slot.start_at = payload.start_at
+    if payload.end_at is not None:
+        slot.end_at = payload.end_at
+    if payload.status is not None:
+        slot.status = SlotStatus(payload.status)
+
+    log_event(
+        db,
+        "slot_updated",
+        user_id=owner.id,
+        payload={"slot_id": str(slot.id), "listing_id": str(listing.id)},
+    )
+    db.commit()
+    db.refresh(slot)
+    return slot
+
+
+@router.delete(
+    "/listings/{listing_id}/slots/{slot_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_listing_slot(
+    listing_id: UUID,
+    slot_id: UUID,
+    db: Session = Depends(get_db),
+    owner: User = Depends(require_owner),
+) -> None:
+    # Authz: verified owner may delete open/blocked slots on their listing.
+    listing = _get_owner_listing(db, owner.id, listing_id)
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    slot = db.scalar(
+        select(ListingAvailabilitySlot).where(
+            ListingAvailabilitySlot.id == slot_id,
+            ListingAvailabilitySlot.listing_id == listing_id,
+        )
+    )
+    if slot is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found")
+    if slot.status == SlotStatus.BOOKED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete a booked slot",
+        )
+
+    log_event(
+        db,
+        "slot_deleted",
+        user_id=owner.id,
+        payload={"slot_id": str(slot.id), "listing_id": str(listing.id)},
+    )
+    db.delete(slot)
     db.commit()

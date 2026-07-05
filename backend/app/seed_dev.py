@@ -15,6 +15,7 @@ from app.models.animal import Animal
 from app.models.booking_request import BookingRequest, BookingStatus, PaymentType
 from app.models.friend_invite import FriendInvite, FriendInviteStatus
 from app.models.listing import ActivityType, Listing
+from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.oauth_account import OAuthAccount, OAuthProvider
 from app.models.species import Species
 from app.models.user import User, VerificationStatus
@@ -863,6 +864,55 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
         upsert_listing(db, key=key, owner=owner, animal=animal, data=data)
 
 
+def upsert_availability_slot(
+    db,
+    *,
+    key: str,
+    listing: Listing,
+    start_at: datetime,
+    end_at: datetime,
+    status: SlotStatus = SlotStatus.OPEN,
+) -> ListingAvailabilitySlot:
+    slot_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"rideconnect.dev.slot.{key}")
+    slot = db.get(ListingAvailabilitySlot, slot_id)
+    if slot is None:
+        slot = ListingAvailabilitySlot(
+            id=slot_id,
+            listing_id=listing.id,
+            start_at=start_at,
+            end_at=end_at,
+            status=status,
+        )
+        db.add(slot)
+    else:
+        slot.listing_id = listing.id
+        slot.start_at = start_at
+        slot.end_at = end_at
+        slot.status = status
+    return slot
+
+
+def seed_availability_slots(db) -> None:
+    """Open slots on a few active listings for calendar discovery in dev."""
+    listing_keys = ("star-trail", "misty-trail", "rusty-lesson")
+    base = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    for listing_index, listing_key in enumerate(listing_keys):
+        listing_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"rideconnect.dev.listing.{listing_key}")
+        listing = db.get(Listing, listing_id)
+        if listing is None or not listing.active:
+            continue
+        for day_offset in (2, 5, 9, 13):
+            start_at = base + timedelta(days=day_offset, hours=10 + listing_index)
+            end_at = start_at + timedelta(hours=2)
+            upsert_availability_slot(
+                db,
+                key=f"{listing_key}-d{day_offset}",
+                listing=listing,
+                start_at=start_at,
+                end_at=end_at,
+            )
+
+
 def upsert_friend_invite(db, *, key: str, owner: User, rider: User | None, email: str, status: FriendInviteStatus) -> FriendInvite:
     invite_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"rideconnect.dev.friend.{key}")
     invite = db.get(FriendInvite, invite_id)
@@ -974,6 +1024,7 @@ def run_seed() -> None:
         users = seed_users(db)
         bulk = seed_bulk_users(db)
         seed_animals_and_listings(db, users)
+        seed_availability_slots(db)
         seed_bulk_owner_assets(db, bulk)
         seed_friend_invites(db, users)
         seed_booking_requests(db, users)

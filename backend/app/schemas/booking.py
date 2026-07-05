@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class CreateBookingRequest(BaseModel):
     listing_id: UUID
     scheduled_at: datetime | None = None
+    availability_slot_id: UUID | None = None
     note: str | None = Field(default=None, max_length=2000)
 
 
@@ -27,6 +28,7 @@ class BookingResponse(BaseModel):
     payment_type: str
     status: str
     scheduled_at: datetime | None
+    availability_slot_id: UUID | None = None
     note: str | None
     requested_at: datetime
     listing_price: Decimal

@@ -4,6 +4,7 @@ from app.models.booking_request import BookingRequest, BookingStatus, PaymentTyp
 from app.models.event import Event
 from app.models.friend_invite import FriendInvite, FriendInviteStatus
 from app.models.invite_token import InviteToken
+from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.listing import ActivityType, Listing
 from app.models.listing_photo import ListingPhoto
 from app.models.message import Message
@@ -27,6 +28,7 @@ __all__ = [
     "FriendInviteStatus",
     "InviteToken",
     "Listing",
+    "ListingAvailabilitySlot",
     "ListingPhoto",
     "Message",
     "ModerationStatus",
@@ -37,7 +39,7 @@ __all__ = [
     "PlatformFlag",
     "PlatformFlagType",
     "Review",
-    "Species",
+    "SlotStatus",
     "Thread",
     "User",
     "VerificationStatus",

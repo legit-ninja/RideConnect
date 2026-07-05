@@ -52,3 +52,6 @@ class Listing(Base):
     animal = relationship("Animal", back_populates="listings")
     owner = relationship("User", back_populates="listings")
     photos = relationship("ListingPhoto", back_populates="listing")
+    availability_slots = relationship(
+        "ListingAvailabilitySlot", back_populates="listing", cascade="all, delete-orphan"
+    )

@@ -10,6 +10,7 @@ from app.routers import (
     admin,
     auth,
     bookings,
+    calendar,
     events,
     friend_invites,
     invite_tokens,
@@ -52,6 +53,7 @@ app.include_router(owner.router)
 app.include_router(friend_invites.router)
 app.include_router(invite_tokens.router)
 app.include_router(bookings.router)
+app.include_router(calendar.router)
 app.include_router(reviews.router)
 app.include_router(events.router)
 

@@ -73,6 +73,7 @@ def listing_to_public(db: Session, listing: Listing) -> PublicListing:
         review_average=round(review_average, 1) if review_average is not None else None,
         slug=listing.slug,
         active=listing.active,
+        riding_styles=list(animal.riding_styles or []),
     )
 
 

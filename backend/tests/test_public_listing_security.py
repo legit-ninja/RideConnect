@@ -60,3 +60,4 @@ def test_public_listing_does_not_leak_private_fields(
     assert payload["owner_last_initial"] == "S"
     assert payload["display_location"] != animal.address
     assert payload["public_lat"] != animal.lat or payload["public_lng"] != animal.lng
+    assert payload["riding_styles"] == ["western"]

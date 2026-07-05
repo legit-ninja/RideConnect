@@ -25,6 +25,7 @@ class PublicListing(BaseModel):
     review_average: float | None
     slug: str
     active: bool
+    riding_styles: list[str] = Field(default_factory=list)
 
 
 class PublicInvitePreview(BaseModel):

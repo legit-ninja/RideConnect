@@ -12,10 +12,12 @@ import styles from "@/components/marketplace/marketplace.module.css";
 import {
   ActivityType,
   ListingSummary,
+  RidingStyle,
   Species,
   fetchListings,
   fetchSpecies,
 } from "@/lib/api";
+import { RIDING_STYLE_OPTIONS, ridingStyleLabel } from "@/components/marketplace/marketplaceLabels";
 
 const ACTIVITY_OPTIONS: { value: ActivityType | ""; label: string }[] = [
   { value: "", label: "All activities" },
@@ -38,6 +40,7 @@ export default function ListingsPage() {
   const [activityType, setActivityType] = useState<ActivityType | "">("");
   const [speciesId, setSpeciesId] = useState("");
   const [priceBand, setPriceBand] = useState(0);
+  const [ridingStyle, setRidingStyle] = useState<RidingStyle | "">("");
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +67,7 @@ export default function ListingsPage() {
       species_id: speciesId || undefined,
       min_price: band?.min,
       max_price: band?.max,
+      riding_style: ridingStyle || undefined,
     })
       .then(setListings)
       .catch(() => {
@@ -72,14 +76,19 @@ export default function ListingsPage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [activityType, speciesId, priceBand]);
+  }, [activityType, speciesId, priceBand, ridingStyle]);
 
   function clearFilters() {
     setActivityType("");
     setPriceBand(0);
+    setRidingStyle("");
   }
 
-  const hasFilters = activityType !== "" || priceBand !== 0 || searchQuery.trim() !== "";
+  const hasFilters =
+    activityType !== "" ||
+    priceBand !== 0 ||
+    ridingStyle !== "" ||
+    searchQuery.trim() !== "";
 
   const visibleListings = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -120,6 +129,18 @@ export default function ListingsPage() {
           {species.map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={ridingStyle}
+          onChange={(event) => setRidingStyle(event.target.value as RidingStyle | "")}
+          aria-label="Riding style"
+        >
+          <option value="">All styles</option>
+          {RIDING_STYLE_OPTIONS.map((style) => (
+            <option key={style} value={style}>
+              {ridingStyleLabel(style)}
             </option>
           ))}
         </select>

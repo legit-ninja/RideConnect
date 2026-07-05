@@ -28,6 +28,7 @@ class Animal(Base):
     lng: Mapped[float] = mapped_column(Float, nullable=False)
     address: Mapped[str] = mapped_column(String(512), nullable=False)
     photo_urls: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    riding_styles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

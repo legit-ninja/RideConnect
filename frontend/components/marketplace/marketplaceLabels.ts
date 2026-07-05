@@ -1,4 +1,12 @@
-import { ActivityType, VerificationStatus } from "@/lib/api";
+import { ActivityType, RidingStyle, VerificationStatus } from "@/lib/api";
+
+export const RIDING_STYLE_OPTIONS: RidingStyle[] = ["western", "english", "therapy"];
+
+const RIDING_STYLE_LABEL: Record<RidingStyle, string> = {
+  western: "Western",
+  english: "English",
+  therapy: "Therapy",
+};
 
 const ACTIVITY_LABEL: Record<ActivityType, string> = {
   lesson: "Lesson",
@@ -44,4 +52,8 @@ export function verificationLabel(status: VerificationStatus): string {
     rejected: "Rejected",
   };
   return labels[status];
+}
+
+export function ridingStyleLabel(style: RidingStyle | string): string {
+  return RIDING_STYLE_LABEL[style as RidingStyle] ?? style.replace(/_/g, " ");
 }

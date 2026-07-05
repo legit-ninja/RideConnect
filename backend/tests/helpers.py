@@ -33,6 +33,7 @@ def seed_test_listing(
         lng=lng,
         address=address,
         photo_urls=[],
+        riding_styles=["western"],
     )
     db.add(animal)
     db.flush()

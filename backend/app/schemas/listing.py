@@ -39,6 +39,7 @@ class ListingSummary(BaseModel):
     public_lat: float
     public_lng: float
     photo_urls: list[str]
+    riding_styles: list[str] = Field(default_factory=list)
     created_at: datetime
 
 

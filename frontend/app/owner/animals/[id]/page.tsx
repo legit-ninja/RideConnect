@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 
+import {
+  parseRidingStylesFromForm,
+  RidingStylesFields,
+  validateHorseRidingStyles,
+} from "@/components/marketplace/RidingStylesFields";
 import { BlockedAction } from "@/components/marketplace/VerificationBanner";
 import { EmptyState } from "@/components/marketplace/EmptyState";
 import { InlineAlert } from "@/components/marketplace/InlineAlert";
@@ -30,6 +35,7 @@ export default function EditAnimalPage() {
   const [species, setSpecies] = useState<Species[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [speciesId, setSpeciesId] = useState("");
 
   useEffect(() => {
     const token = getToken();
@@ -43,9 +49,15 @@ export default function EditAnimalPage() {
         setSpecies(speciesList);
         const found = animals.find((item) => item.id === id) ?? null;
         setAnimal(found);
+        if (found) {
+          setSpeciesId(found.species_id);
+        }
       })
       .catch(() => setError("Unable to load animal."));
   }, [id, router]);
+
+  const selectedSpeciesName =
+    species.find((item) => item.id === speciesId)?.name ?? "";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,6 +66,15 @@ export default function EditAnimalPage() {
     setBusy(true);
     setError(null);
     const form = new FormData(event.currentTarget);
+    const riding_styles = parseRidingStylesFromForm(form, selectedSpeciesName);
+    if (selectedSpeciesName === "horse") {
+      const validationError = validateHorseRidingStyles(riding_styles);
+      if (validationError) {
+        setError(validationError);
+        setBusy(false);
+        return;
+      }
+    }
     try {
       await updateOwnerAnimal(token, id, {
         species_id: String(form.get("species_id")),
@@ -61,6 +82,7 @@ export default function EditAnimalPage() {
         breed: String(form.get("breed") || "") || null,
         description: String(form.get("description") || "") || null,
         address: String(form.get("address")),
+        riding_styles,
       });
       router.push("/owner/animals");
     } catch (err: unknown) {
@@ -98,7 +120,11 @@ export default function EditAnimalPage() {
         <form onSubmit={handleSubmit}>
           <label>
             Species
-            <select name="species_id" defaultValue={animal.species_id}>
+            <select
+              name="species_id"
+              value={speciesId}
+              onChange={(event) => setSpeciesId(event.target.value)}
+            >
               {species.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -106,6 +132,10 @@ export default function EditAnimalPage() {
               ))}
             </select>
           </label>
+          <RidingStylesFields
+            speciesName={selectedSpeciesName}
+            defaultStyles={animal.riding_styles}
+          />
           <label>
             Name
             <input name="name" required defaultValue={animal.name} />

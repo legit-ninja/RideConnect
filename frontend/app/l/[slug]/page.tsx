@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { ListingImage } from "@/components/marketplace/ListingImage";
 import { StarRating } from "@/components/marketplace/StarRating";
-import { activityTypeLabel } from "@/components/marketplace/marketplaceLabels";
+import { activityTypeLabel, ridingStyleLabel } from "@/components/marketplace/marketplaceLabels";
 import styles from "@/components/marketplace/marketplace.module.css";
 import type { PublicListing } from "@/lib/api";
 import { buildAuthQuery } from "@/lib/funnel";
@@ -108,6 +108,11 @@ export default async function PublicListingPage({
           <span className={styles.chip}>{activityTypeLabel(listing.activity_type)}</span>
           <span className={styles.chip}>{formatPrice(listing.price)}</span>
           {listing.breed ? <span className={styles.chip}>{listing.breed}</span> : null}
+          {listing.riding_styles.map((style) => (
+            <span key={style} className={styles.chip}>
+              {ridingStyleLabel(style)}
+            </span>
+          ))}
         </div>
       </header>
 

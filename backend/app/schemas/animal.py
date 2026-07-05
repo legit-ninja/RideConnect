@@ -1,7 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.models.riding_style import RidingStyle
 
 
 class AnimalCreateRequest(BaseModel):
@@ -14,6 +16,18 @@ class AnimalCreateRequest(BaseModel):
     lng: float = Field(ge=-180, le=180)
     address: str = Field(min_length=1, max_length=512)
     photo_urls: list[str] = Field(default_factory=list)
+    riding_styles: list[RidingStyle] = Field(default_factory=list)
+
+    @field_validator("riding_styles")
+    @classmethod
+    def unique_riding_styles(cls, values: list[RidingStyle]) -> list[RidingStyle]:
+        seen: set[RidingStyle] = set()
+        unique: list[RidingStyle] = []
+        for value in values:
+            if value not in seen:
+                seen.add(value)
+                unique.append(value)
+        return unique
 
 
 class AnimalUpdateRequest(BaseModel):
@@ -26,6 +40,22 @@ class AnimalUpdateRequest(BaseModel):
     lng: float | None = Field(default=None, ge=-180, le=180)
     address: str | None = Field(default=None, min_length=1, max_length=512)
     photo_urls: list[str] | None = None
+    riding_styles: list[RidingStyle] | None = None
+
+    @field_validator("riding_styles")
+    @classmethod
+    def unique_riding_styles(
+        cls, values: list[RidingStyle] | None
+    ) -> list[RidingStyle] | None:
+        if values is None:
+            return None
+        seen: set[RidingStyle] = set()
+        unique: list[RidingStyle] = []
+        for value in values:
+            if value not in seen:
+                seen.add(value)
+                unique.append(value)
+        return unique
 
 
 class AnimalResponse(BaseModel):
@@ -40,6 +70,7 @@ class AnimalResponse(BaseModel):
     lng: float
     address: str
     photo_urls: list[str]
+    riding_styles: list[str]
     created_at: datetime
 
     model_config = {"from_attributes": True}

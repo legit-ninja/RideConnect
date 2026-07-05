@@ -12,6 +12,7 @@ from app.models.notification import Notification
 from app.models.oauth_account import OAuthAccount, OAuthProvider
 from app.models.platform_flag import PlatformFlag, PlatformFlagType
 from app.models.review import ModerationStatus, Review
+from app.models.riding_style import RidingStyle
 from app.models.species import Species
 from app.models.thread import Thread
 from app.models.user import User, VerificationStatus
@@ -39,6 +40,7 @@ __all__ = [
     "PlatformFlag",
     "PlatformFlagType",
     "Review",
+    "RidingStyle",
     "SlotStatus",
     "Thread",
     "User",

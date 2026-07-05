@@ -521,6 +521,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -81.6746,
                 "address": "Boone, NC 28607",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["western"],
             },
         ),
         (
@@ -535,6 +536,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -82.5515,
                 "address": "Asheville, NC 28801",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["english"],
             },
         ),
         (
@@ -549,6 +551,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -81.6720,
                 "address": "Blowing Rock, NC 28605",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["western", "english"],
             },
         ),
         (
@@ -563,6 +566,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -81.6812,
                 "address": "Boone, NC 28607",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["english"],
             },
         ),
         (
@@ -577,6 +581,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -82.5540,
                 "address": "Asheville, NC 28801",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["western"],
             },
         ),
         (
@@ -591,6 +596,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -81.2668,
                 "address": "Wilkesboro, NC 28697",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["therapy"],
             },
         ),
         (
@@ -605,6 +611,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -81.3442,
                 "address": "Hickory, NC 28601",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["english"],
             },
         ),
         (
@@ -619,6 +626,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -81.6800,
                 "address": "Boone, NC 28607",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["western", "english"],
             },
         ),
         (
@@ -633,6 +641,7 @@ def seed_animals_and_listings(db, users: dict[str, User]) -> None:
                 "lng": -81.6700,
                 "address": "Blowing Rock, NC 28605",
                 "photo_urls": [PLACEHOLDER_PHOTO],
+                "riding_styles": ["western"],
             },
         ),
     ]

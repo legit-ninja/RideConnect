@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.animal import Animal
 from app.models.listing import ActivityType, Listing
+from app.models.riding_style import RidingStyle
 from app.models.species import Species
 from app.schemas.listing import ListingDetail, ListingSummary
 
@@ -39,6 +40,7 @@ def listing_to_summary(listing: Listing) -> ListingSummary:
         public_lat=listing.public_lat,
         public_lng=listing.public_lng,
         photo_urls=list(animal.photo_urls or []),
+        riding_styles=list(animal.riding_styles or []),
         created_at=listing.created_at,
     )
 
@@ -65,6 +67,7 @@ def search_listings(
     lat: float,
     lng: float,
     radius_km: float,
+    riding_style: RidingStyle | None = None,
     active_only: bool = True,
     owner_id: UUID | None = None,
 ) -> list[Listing]:
@@ -91,8 +94,13 @@ def search_listings(
     filtered: list[Listing] = []
     for listing in listings:
         distance = haversine_km(lat, lng, listing.public_lat, listing.public_lng)
-        if distance <= radius_km:
-            filtered.append(listing)
+        if distance > radius_km:
+            continue
+        if riding_style is not None:
+            styles = list(listing.animal.riding_styles or [])
+            if riding_style.value not in styles:
+                continue
+        filtered.append(listing)
     return filtered
 
 

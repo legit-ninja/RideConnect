@@ -4,7 +4,7 @@ import { ListingSummary } from "@/lib/api";
 
 import { ListingImage } from "./ListingImage";
 import { StarRating } from "./StarRating";
-import { activityTypeLabel } from "./marketplaceLabels";
+import { activityTypeLabel, ridingStyleLabel } from "./marketplaceLabels";
 import styles from "./marketplace.module.css";
 
 function formatPrice(price: string, friendOnly: boolean): string {
@@ -34,6 +34,15 @@ export function ListingCard({ listing, rating }: ListingCardProps) {
         <div className={styles.cardMeta}>
           {activityTypeLabel(listing.activity_type)} · {listing.display_location}
         </div>
+        {listing.riding_styles.length > 0 ? (
+          <div className={styles.chipRow}>
+            {listing.riding_styles.map((style) => (
+              <span key={style} className={styles.chip}>
+                {ridingStyleLabel(style)}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {rating != null && rating > 0 ? (
           <StarRating value={rating} showValue />
         ) : null}

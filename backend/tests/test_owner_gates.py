@@ -22,6 +22,7 @@ def test_unverified_owner_cannot_create_animal(
             "lng": -81.6,
             "address": "Boone, NC",
             "photo_urls": [],
+            "riding_styles": ["western"],
         },
     )
     assert response.status_code == 403
@@ -48,6 +49,7 @@ def test_verified_owner_can_create_animal(
             "lng": -81.6,
             "address": "Boone, NC",
             "photo_urls": [],
+            "riding_styles": ["western"],
         },
     )
     assert response.status_code == 201

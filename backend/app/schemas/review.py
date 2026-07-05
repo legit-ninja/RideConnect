@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class CreateReviewRequest(BaseModel):
     rating: int = Field(ge=1, le=5)
     body: str | None = Field(default=None, max_length=2000)
+    observed_rider_skill: int | None = Field(default=None, ge=1, le=5)
 
 
 class ReviewResponse(BaseModel):
@@ -16,6 +17,7 @@ class ReviewResponse(BaseModel):
     reviewee_id: UUID
     rating: int
     body: str | None
+    observed_rider_skill: int | None = None
     is_friend_ride: bool
     published_at: datetime | None
     created_at: datetime

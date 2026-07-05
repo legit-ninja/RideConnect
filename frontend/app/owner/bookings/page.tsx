@@ -58,7 +58,7 @@ export default function OwnerBookingsPage() {
     fetchCurrentUser(token)
       .then((currentUser) => {
         setUser(currentUser);
-        if (!currentUser.is_owner && !currentUser.is_trainer) {
+        if (!currentUser.is_owner) {
           router.replace("/dashboard");
           return;
         }
@@ -151,6 +151,11 @@ export default function OwnerBookingsPage() {
                         <td>
                           <div>{booking.rider_email}</div>
                           <VerificationPill status={booking.rider_verification_status} />
+                          {booking.rider_skill_warning ? (
+                            <div className={styles.banner} role="status">
+                              {booking.rider_skill_warning}
+                            </div>
+                          ) : null}
                         </td>
                         <td>
                           {booking.animal_name} — {activityTypeLabel(booking.activity_type)}

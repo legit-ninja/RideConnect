@@ -41,6 +41,10 @@ def listing_to_summary(listing: Listing) -> ListingSummary:
         public_lng=listing.public_lng,
         photo_urls=list(animal.photo_urls or []),
         riding_styles=list(animal.riding_styles or []),
+        min_rider_skill=listing.min_rider_skill,
+        max_rider_weight_lbs=listing.max_rider_weight_lbs,
+        helmet_required=listing.helmet_required,
+        tack_provided=listing.tack_provided,
         created_at=listing.created_at,
     )
 

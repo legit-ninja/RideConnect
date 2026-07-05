@@ -14,6 +14,14 @@ from app.models.user import User, VerificationStatus
 from app.services.security import create_access_token, hash_password
 
 
+@pytest.fixture(autouse=True)
+def _test_jitter_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LOCATION_JITTER_SECRET", "test-jitter-secret")
+    from app.config import settings
+
+    settings.location_jitter_secret = "test-jitter-secret"
+
+
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
     engine = create_engine(
@@ -57,9 +65,13 @@ def create_user(
     email: str,
     is_admin: bool = False,
     is_owner: bool = False,
-    is_trainer: bool = False,
+    is_horse_trainer: bool = False,
+    is_riding_instructor: bool = False,
+    trainer_verified: bool = False,
+    rider_skill_level: int | None = None,
     is_rider: bool = True,
     verification_status: VerificationStatus = VerificationStatus.UNVERIFIED,
+    is_minor: bool = False,
 ) -> User:
     user = User(
         email=email,
@@ -68,9 +80,13 @@ def create_user(
         last_name="User",
         is_rider=is_rider,
         is_owner=is_owner,
-        is_trainer=is_trainer,
+        is_horse_trainer=is_horse_trainer,
+        is_riding_instructor=is_riding_instructor,
+        trainer_verified=trainer_verified,
+        rider_skill_level=rider_skill_level,
         is_admin=is_admin,
         verification_status=verification_status,
+        is_minor=is_minor,
     )
     db.add(user)
     db.commit()

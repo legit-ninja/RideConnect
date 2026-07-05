@@ -61,3 +61,5 @@ def test_public_listing_does_not_leak_private_fields(
     assert payload["display_location"] != animal.address
     assert payload["public_lat"] != animal.lat or payload["public_lng"] != animal.lng
     assert payload["riding_styles"] == ["western"]
+    assert "min_rider_skill" in payload
+    assert "rider_skill_level" not in payload

@@ -25,6 +25,7 @@ from app.schemas.listing import (
 )
 from app.services.events import log_event
 from app.services.listings import get_species_by_id
+from app.config import settings
 from app.services.public_location import default_display_location, jitter_coordinates
 from app.services.riding_styles import require_horse_riding_styles
 from app.services.slug import generate_listing_slug
@@ -196,7 +197,9 @@ def create_owner_listing(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid animal")
 
     display_location = payload.display_location or default_display_location(animal.address)
-    pub_lat, pub_lng = jitter_coordinates(animal.lat, animal.lng)
+    pub_lat, pub_lng = jitter_coordinates(
+        animal.id, animal.lat, animal.lng, settings.location_jitter_secret
+    )
 
     for _ in range(5):
         listing = Listing(
@@ -211,6 +214,10 @@ def create_owner_listing(
             display_location=display_location,
             public_lat=pub_lat,
             public_lng=pub_lng,
+            min_rider_skill=payload.min_rider_skill,
+            max_rider_weight_lbs=payload.max_rider_weight_lbs,
+            helmet_required=payload.helmet_required,
+            tack_provided=payload.tack_provided,
         )
         db.add(listing)
         try:
@@ -261,6 +268,14 @@ def update_owner_listing(
         listing.friend_only_allowed = payload.friend_only_allowed
     if payload.active is not None:
         listing.active = payload.active
+    if payload.min_rider_skill is not None:
+        listing.min_rider_skill = payload.min_rider_skill
+    if payload.max_rider_weight_lbs is not None:
+        listing.max_rider_weight_lbs = payload.max_rider_weight_lbs
+    if payload.helmet_required is not None:
+        listing.helmet_required = payload.helmet_required
+    if payload.tack_provided is not None:
+        listing.tack_provided = payload.tack_provided
 
     db.commit()
     db.refresh(listing)

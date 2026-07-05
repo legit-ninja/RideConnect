@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, Numeric, SmallInteger, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -15,6 +15,12 @@ class ActivityType(str, enum.Enum):
     LEASE = "lease"
     TRAIL_RIDE = "trail_ride"
     DAY_RENTAL = "day_rental"
+
+
+class TackProvided(str, enum.Enum):
+    PROVIDED = "provided"
+    BRING_OWN = "bring_own"
+    EITHER = "either"
 
 
 class Listing(Base):
@@ -45,6 +51,18 @@ class Listing(Base):
     display_location: Mapped[str] = mapped_column(String(256), nullable=False)
     public_lat: Mapped[float] = mapped_column(Float, nullable=False)
     public_lng: Mapped[float] = mapped_column(Float, nullable=False)
+    min_rider_skill: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    max_rider_weight_lbs: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    helmet_required: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    tack_provided: Mapped[TackProvided] = mapped_column(
+        Enum(
+            TackProvided,
+            name="tack_provided",
+            values_callable=lambda e: [m.value for m in e],
+        ),
+        default=TackProvided.EITHER,
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -117,6 +117,18 @@ export default async function PublicListingPage({
       </header>
 
       <section className={styles.detailSection}>
+        <h2>Ride details</h2>
+        {listing.min_rider_skill_label ? (
+          <p>{listing.min_rider_skill_label}</p>
+        ) : null}
+        {listing.max_rider_weight_lbs ? (
+          <p>Rider weight limit: {listing.max_rider_weight_lbs} lb</p>
+        ) : null}
+        <p>{listing.helmet_required ? "Helmet required" : "Helmet optional"}</p>
+        <p>{listing.tack_provided_label}</p>
+      </section>
+
+      <section className={styles.detailSection}>
         <h2>Approximate location</h2>
         <p>{listing.display_location}</p>
         <p className={styles.cardMeta}>
@@ -141,6 +153,9 @@ export default async function PublicListingPage({
           {listing.owner_first_name} {listing.owner_last_initial}.
           {listing.owner_verified ? (
             <span className={styles.verifiedBadge}> Verified owner</span>
+          ) : null}
+          {listing.owner_trainer_verified ? (
+            <span className={styles.verifiedBadge}> Verified trainer</span>
           ) : null}
         </p>
         <p className={styles.cardMeta}>Member since {listing.owner_member_since}</p>

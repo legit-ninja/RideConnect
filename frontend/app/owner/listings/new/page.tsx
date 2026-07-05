@@ -55,6 +55,14 @@ export default function NewListingPage() {
         price: Number(form.get("price")),
         availability: String(form.get("availability") || "") || undefined,
         friend_only_allowed: form.get("friend_only_allowed") === "on",
+        min_rider_skill: form.get("min_rider_skill")
+          ? Number(form.get("min_rider_skill"))
+          : undefined,
+        max_rider_weight_lbs: form.get("max_rider_weight_lbs")
+          ? Number(form.get("max_rider_weight_lbs"))
+          : undefined,
+        helmet_required: form.get("helmet_required") !== "off",
+        tack_provided: String(form.get("tack_provided") || "either"),
       });
       router.push("/owner/listings");
     } catch (err: unknown) {
@@ -118,6 +126,32 @@ export default function NewListingPage() {
             </label>
             <label>
               <input name="friend_only_allowed" type="checkbox" /> Friend-only (free ride path)
+            </label>
+            <label>
+              Minimum rider skill (optional)
+              <select name="min_rider_skill" defaultValue="">
+                <option value="">No minimum</option>
+                <option value="1">Beginner and up</option>
+                <option value="2">Advanced beginner and up</option>
+                <option value="3">Intermediate and up</option>
+                <option value="4">Advanced intermediate and up</option>
+                <option value="5">Professional only</option>
+              </select>
+            </label>
+            <label>
+              Rider weight limit (lb, optional)
+              <input name="max_rider_weight_lbs" type="number" min={50} max={500} />
+            </label>
+            <label>
+              <input name="helmet_required" type="checkbox" defaultChecked /> Helmet required
+            </label>
+            <label>
+              Tack
+              <select name="tack_provided" defaultValue="either">
+                <option value="provided">Provided by owner</option>
+                <option value="bring_own">Rider brings own</option>
+                <option value="either">Either</option>
+              </select>
             </label>
             {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}
             <button className={styles.button} type="submit" disabled={busy}>

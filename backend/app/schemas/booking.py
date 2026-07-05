@@ -33,6 +33,7 @@ class BookingResponse(BaseModel):
     listing_price: Decimal
     activity_type: str
     thread_id: UUID | None = None
+    rider_skill_warning: str | None = None
 
     model_config = {"from_attributes": True}
 

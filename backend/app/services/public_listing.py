@@ -6,8 +6,9 @@ from app.models.booking_request import BookingRequest
 from app.models.listing import Listing
 from app.models.listing_photo import ListingPhoto
 from app.models.review import ModerationStatus, Review
+from app.models.rider_skill import RiderSkillLevel
 from app.models.user import VerificationStatus
-from app.schemas.public_listing import PublicListing
+from app.schemas.public_listing import PublicListing, tack_provided_label
 from app.services.storage import get_public_url
 
 
@@ -74,6 +75,13 @@ def listing_to_public(db: Session, listing: Listing) -> PublicListing:
         slug=listing.slug,
         active=listing.active,
         riding_styles=list(animal.riding_styles or []),
+        min_rider_skill=listing.min_rider_skill,
+        min_rider_skill_label=RiderSkillLevel.minimum_label(listing.min_rider_skill),
+        max_rider_weight_lbs=listing.max_rider_weight_lbs,
+        helmet_required=listing.helmet_required,
+        tack_provided=listing.tack_provided.value,
+        tack_provided_label=tack_provided_label(listing.tack_provided),
+        owner_trainer_verified=owner.trainer_verified,
     )
 
 

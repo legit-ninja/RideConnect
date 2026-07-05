@@ -11,7 +11,10 @@ export interface User {
   email: string;
   is_rider: boolean;
   is_owner: boolean;
-  is_trainer: boolean;
+  is_horse_trainer: boolean;
+  is_riding_instructor: boolean;
+  trainer_verified: boolean;
+  rider_skill_level: number | null;
   is_admin: boolean;
   verification_status: VerificationStatus;
   is_minor: boolean;
@@ -88,6 +91,10 @@ export interface OwnerListing {
   active: boolean;
   slug: string;
   display_location: string;
+  min_rider_skill: number | null;
+  max_rider_weight_lbs: number | null;
+  helmet_required: boolean;
+  tack_provided: string;
   created_at: string;
 }
 
@@ -128,7 +135,10 @@ export interface AdminUserSummary {
   email: string;
   is_rider: boolean;
   is_owner: boolean;
-  is_trainer: boolean;
+  is_horse_trainer: boolean;
+  is_riding_instructor: boolean;
+  trainer_verified: boolean;
+  rider_skill_level: number | null;
   is_admin: boolean;
   verification_status: VerificationStatus;
   is_minor: boolean;
@@ -244,7 +254,6 @@ export function registerUser(
     last_name: string;
     is_rider: boolean;
     is_owner: boolean;
-    is_trainer: boolean;
   },
   funnel?: { src?: string; ref?: string },
 ): Promise<User> {
@@ -271,6 +280,21 @@ export function loginUser(payload: {
 
 export function fetchCurrentUser(token: string): Promise<User> {
   return request<User>("/auth/me", {}, token);
+}
+
+export function updateProfile(
+  token: string,
+  payload: {
+    is_horse_trainer?: boolean;
+    is_riding_instructor?: boolean;
+    rider_skill_level?: number | null;
+  },
+): Promise<User> {
+  return request<User>(
+    "/auth/me/profile",
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
 }
 
 export function fetchAdminStats(token: string): Promise<AdminStats> {
@@ -324,10 +348,22 @@ export function updateUserVerification(
 export function updateUserRoles(
   token: string,
   userId: string,
-  payload: { is_rider: boolean; is_owner: boolean; is_trainer: boolean },
+  payload: { is_rider: boolean; is_owner: boolean },
 ): Promise<AdminUserDetail> {
   return request<AdminUserDetail>(
     `/admin/users/${userId}/roles`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function updateTrainerVerification(
+  token: string,
+  userId: string,
+  payload: { trainer_verified: boolean; note?: string },
+): Promise<AdminUserDetail> {
+  return request<AdminUserDetail>(
+    `/admin/users/${userId}/trainer-verification`,
     { method: "PATCH", body: JSON.stringify(payload) },
     token,
   );
@@ -406,6 +442,10 @@ export function createOwnerListing(
     availability?: string;
     friend_only_allowed?: boolean;
     active?: boolean;
+    min_rider_skill?: number | null;
+    max_rider_weight_lbs?: number | null;
+    helmet_required?: boolean;
+    tack_provided?: string;
   },
 ): Promise<OwnerListing> {
   return request<OwnerListing>(
@@ -424,6 +464,10 @@ export function updateOwnerListing(
     availability: string;
     friend_only_allowed: boolean;
     active: boolean;
+    min_rider_skill: number | null;
+    max_rider_weight_lbs: number | null;
+    helmet_required: boolean;
+    tack_provided: string;
   }>,
 ): Promise<OwnerListing> {
   return request<OwnerListing>(
@@ -528,6 +572,7 @@ export interface BookingRequest {
   listing_price: string;
   activity_type: string;
   thread_id?: string | null;
+  rider_skill_warning?: string | null;
 }
 
 export interface BookingListResponse {
@@ -634,12 +679,19 @@ export interface PublicListing {
   owner_first_name: string;
   owner_last_initial: string;
   owner_verified: boolean;
+  owner_trainer_verified: boolean;
   owner_member_since: string;
   review_count: number;
   review_average: number | null;
   riding_styles: RidingStyle[];
   slug: string;
   active: boolean;
+  min_rider_skill: number | null;
+  min_rider_skill_label: string | null;
+  max_rider_weight_lbs: number | null;
+  helmet_required: boolean;
+  tack_provided: string;
+  tack_provided_label: string;
 }
 
 export interface PublicInvitePreview {

@@ -7,6 +7,7 @@ from app.models.animal import Animal
 from app.models.listing import ActivityType, Listing
 from app.models.listing_availability_slot import ListingAvailabilitySlot, SlotStatus
 from app.models.user import User
+from app.config import settings
 from app.services.public_location import default_display_location, jitter_coordinates
 from app.services.slug import generate_listing_slug
 
@@ -37,7 +38,9 @@ def seed_test_listing(
     )
     db.add(animal)
     db.flush()
-    public_lat, public_lng = jitter_coordinates(lat, lng)
+    public_lat, public_lng = jitter_coordinates(
+        animal.id, lat, lng, settings.location_jitter_secret
+    )
     listing = Listing(
         animal_id=animal.id,
         owner_id=owner.id,

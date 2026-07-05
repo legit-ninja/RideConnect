@@ -53,12 +53,22 @@ def create_review(
     reviewee_id = (
         booking.owner_id if current_user.id == booking.rider_id else booking.rider_id
     )
+    observed_skill = None
+    if payload.observed_rider_skill is not None:
+        if current_user.id != booking.owner_id or reviewee_id != booking.rider_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the owner may record observed rider skill",
+            )
+        observed_skill = payload.observed_rider_skill
+
     review = Review(
         booking_request_id=booking_id,
         reviewer_id=current_user.id,
         reviewee_id=reviewee_id,
         rating=payload.rating,
         body=payload.body,
+        observed_rider_skill=observed_skill,
         is_friend_ride=booking.payment_type == PaymentType.FREE,
     )
     db.add(review)

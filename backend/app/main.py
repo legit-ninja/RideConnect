@@ -21,6 +21,7 @@ from app.routers import (
     reviews,
     species,
     threads,
+    users,
 )
 from app.seed import ensure_admin_user
 
@@ -57,6 +58,7 @@ app.include_router(bookings.router)
 app.include_router(threads.router)
 app.include_router(calendar.router)
 app.include_router(reviews.router)
+app.include_router(users.router)
 app.include_router(events.router)
 
 

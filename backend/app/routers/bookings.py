@@ -23,6 +23,8 @@ from app.schemas.booking import (
 
 from app.services.calendar import get_slot_for_booking, mark_slot_booked, release_slot
 from app.services.events import log_event
+from app.services.flags import maybe_flag_trainer_minor_skew
+from app.services.rider_skill import rider_skill_warning
 from app.services.threads import create_booking_thread
 
 router = APIRouter(tags=["bookings"])
@@ -36,8 +38,16 @@ def _thread_id_for_booking(db: Session, booking_id: UUID) -> UUID | None:
     )
 
 
-def _booking_to_response(db: Session, booking: BookingRequest) -> BookingResponse:
+def _booking_to_response(
+    db: Session, booking: BookingRequest, *, for_owner: bool = False
+) -> BookingResponse:
     listing = booking.listing
+    warning = None
+    if for_owner:
+        warning = rider_skill_warning(
+            booking.rider.rider_skill_level,
+            listing.min_rider_skill,
+        )
     return BookingResponse(
         id=booking.id,
         listing_id=booking.listing_id,
@@ -56,6 +66,7 @@ def _booking_to_response(db: Session, booking: BookingRequest) -> BookingRespons
         listing_price=listing.price,
         activity_type=listing.activity_type.value,
         thread_id=_thread_id_for_booking(db, booking.id),
+        rider_skill_warning=warning,
     )
 
 
@@ -168,10 +179,11 @@ def create_booking(
         db.add(Message(thread_id=thread.id, sender_id=rider.id, body=message_body))
 
     log_event(db, "booking_requested", user_id=rider.id, payload={"booking_id": str(booking.id)})
+    maybe_flag_trainer_minor_skew(db, listing.owner_id)
     db.commit()
     loaded = _load_booking(db, booking.id)
     assert loaded is not None
-    return _booking_to_response(db, loaded)
+    return _booking_to_response(db, loaded, for_owner=False)
 
 
 @router.get("/bookings", response_model=BookingListResponse)
@@ -182,10 +194,10 @@ def list_bookings(
 ) -> BookingListResponse:
     # Authz: riders see own requests; hosts see requests for their listings.
     if role == "owner":
-        if not current_user.is_owner and not current_user.is_trainer:
+        if not current_user.is_owner:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Host access required",
+                detail="Owner access required",
             )
         stmt = select(BookingRequest).where(BookingRequest.owner_id == current_user.id)
     else:
@@ -201,7 +213,9 @@ def list_bookings(
         ).all()
     )
     return BookingListResponse(
-        items=[_booking_to_response(db, b) for b in bookings],
+        items=[
+            _booking_to_response(db, b, for_owner=(role == "owner")) for b in bookings
+        ],
         total=len(bookings),
     )
 
@@ -231,6 +245,7 @@ def update_booking_status(
         if booking.availability_slot_id:
             slot = db.get(ListingAvailabilitySlot, booking.availability_slot_id)
             mark_slot_booked(db, slot)
+        maybe_flag_trainer_minor_skew(db, booking.owner_id)
     elif payload.status == "declined":
         booking.status = BookingStatus.DECLINED
         if booking.availability_slot_id:
@@ -255,7 +270,7 @@ def update_booking_status(
     db.commit()
     loaded = _load_booking(db, booking.id)
     assert loaded is not None
-    return _booking_to_response(db, loaded)
+    return _booking_to_response(db, loaded, for_owner=True)
 
 
 @router.get("/admin/bookings", response_model=BookingListResponse)

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.listing import ActivityType
+from app.models.listing import ActivityType, TackProvided
 
 
 class ListingCreateRequest(BaseModel):
@@ -15,6 +15,10 @@ class ListingCreateRequest(BaseModel):
     friend_only_allowed: bool = False
     active: bool = True
     display_location: str | None = Field(default=None, max_length=256)
+    min_rider_skill: int | None = Field(default=None, ge=1, le=5)
+    max_rider_weight_lbs: int | None = Field(default=None, ge=50, le=500)
+    helmet_required: bool = True
+    tack_provided: TackProvided = TackProvided.EITHER
 
 
 class ListingUpdateRequest(BaseModel):
@@ -23,6 +27,10 @@ class ListingUpdateRequest(BaseModel):
     availability: str | None = Field(default=None, max_length=2000)
     friend_only_allowed: bool | None = None
     active: bool | None = None
+    min_rider_skill: int | None = Field(default=None, ge=1, le=5)
+    max_rider_weight_lbs: int | None = Field(default=None, ge=50, le=500)
+    helmet_required: bool | None = None
+    tack_provided: TackProvided | None = None
 
 
 class ListingSummary(BaseModel):
@@ -40,6 +48,10 @@ class ListingSummary(BaseModel):
     public_lng: float
     photo_urls: list[str]
     riding_styles: list[str] = Field(default_factory=list)
+    min_rider_skill: int | None = None
+    max_rider_weight_lbs: int | None = None
+    helmet_required: bool = True
+    tack_provided: TackProvided = TackProvided.EITHER
     created_at: datetime
 
 
@@ -63,6 +75,10 @@ class ListingResponse(BaseModel):
     display_location: str
     public_lat: float
     public_lng: float
+    min_rider_skill: int | None = None
+    max_rider_weight_lbs: int | None = None
+    helmet_required: bool = True
+    tack_provided: TackProvided = TackProvided.EITHER
     created_at: datetime
 
     model_config = {"from_attributes": True}

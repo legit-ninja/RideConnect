@@ -1,0 +1,20 @@
+# Copy to /etc/systemd/system/rideconnect-web-dev.service on the server.
+# Dev web listens on 3010.
+
+[Unit]
+Description=RideConnect web (Next.js) — dev
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dev.phantomequestrian.com/app
+Environment=PORT=3010
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

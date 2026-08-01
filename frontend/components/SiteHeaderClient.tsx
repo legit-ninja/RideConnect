@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -8,34 +9,16 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/UserMenu";
 import { ApiError, User, fetchCurrentUser } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
+import { siteConfig } from "@/lib/site";
 
 import layoutStyles from "@/app/layout.module.css";
 
 const NAV_LINKS = [
   { href: "/listings", label: "Browse" },
+  { href: "/shop", label: "Shop" },
   { href: "/#how-it-works", label: "How it works" },
   { href: "/owner/listings", label: "For owners" },
 ];
-
-function CompassIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-    </svg>
-  );
-}
 
 function MenuIcon() {
   return (
@@ -103,13 +86,6 @@ export function SiteHeaderClient() {
   const brandClass = [
     layoutStyles.brand,
     transparent ? layoutStyles.brandTransparent : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const markClass = [
-    layoutStyles.brandMark,
-    transparent ? layoutStyles.brandMarkTransparent : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -189,8 +165,15 @@ export function SiteHeaderClient() {
     <>
       <header className={headerClass}>
         <Link href="/" className={brandClass}>
-          <CompassIcon className={markClass} />
-          RideConnect
+          <Image
+            src={siteConfig.logo}
+            alt={siteConfig.name}
+            width={56}
+            height={61}
+            className={layoutStyles.brandMark}
+            priority
+          />
+          <span className={layoutStyles.brandName}>{siteConfig.name}</span>
         </Link>
 
         {renderAuthActions(false)}

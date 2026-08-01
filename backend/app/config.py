@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_publishable_key: str = ""
     stripe_connect_client_id: str = ""
+    stripe_webhook_secret: str = ""
     platform_commission_percent: int = 10
 
     google_client_id: str = ""

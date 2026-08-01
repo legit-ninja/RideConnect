@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ListingCard } from "@/components/marketplace/ListingCard";
 import type { ListingSummary } from "@/lib/api";
 import { getServerApiUrl } from "@/lib/server-api";
+import { siteConfig } from "@/lib/site";
 
 import styles from "./page.module.css";
 
@@ -32,7 +33,7 @@ const VALUES = [
     icon: "🛡",
     title: "Trust first",
     description:
-      "Every rider is verified. Every owner is vetted. Safety is not optional on RideConnect.",
+      `Every rider is verified. Every owner is vetted. Safety is not optional on ${siteConfig.name}.`,
   },
   {
     icon: "★",
@@ -144,7 +145,7 @@ export default async function Home() {
       <section className={styles.section}>
         <div className={styles.sectionInner}>
           <div className={styles.sectionHeader}>
-            <span className="sectionEyebrow">Why RideConnect</span>
+            <span className="sectionEyebrow">Why {siteConfig.name}</span>
             <h2 className={styles.sectionTitle}>Built on trust</h2>
           </div>
           <div className={styles.valuesGrid}>
@@ -167,7 +168,7 @@ export default async function Home() {
           <div className={styles.ctaContent}>
             <h2>Ready to ride?</h2>
             <p>
-              Join RideConnect today and connect with verified owners for your next riding
+              Join {siteConfig.name} today and connect with verified owners for your next riding
               experience.
             </p>
             <div className={styles.ctaActions}>

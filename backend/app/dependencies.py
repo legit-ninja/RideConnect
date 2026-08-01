@@ -2,10 +2,12 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.user import User, VerificationStatus
+from app.models.vendor_profile import VendorProfile, VendorStatus
 from app.services.security import decode_access_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -100,5 +102,28 @@ def require_rider(current_user: User = Depends(require_verified)) -> User:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Rider access required",
+        )
+    return current_user
+
+
+def require_vendor(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    # Authz: shop product management — admin OR approved vendor (KYC not required for shop).
+    if current_user.is_admin:
+        return current_user
+    if not current_user.is_vendor:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vendor access required",
+        )
+    profile = db.scalar(
+        select(VendorProfile).where(VendorProfile.user_id == current_user.id)
+    )
+    if profile is None or profile.status != VendorStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Approved vendor profile required",
         )
     return current_user

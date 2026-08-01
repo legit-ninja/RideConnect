@@ -1,0 +1,20 @@
+# Copy to /etc/systemd/system/rideconnect-web.service (prod) on the server.
+# Prod web listens on 3009. .env is loaded by Next.js (not systemd).
+
+[Unit]
+Description=RideConnect web (Next.js) — production
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/phantomequestrian.com/app
+Environment=PORT=3009
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

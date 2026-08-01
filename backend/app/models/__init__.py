@@ -14,9 +14,27 @@ from app.models.oauth_account import OAuthAccount, OAuthProvider
 from app.models.platform_flag import PlatformFlag, PlatformFlagType
 from app.models.review import ModerationStatus, Review
 from app.models.riding_style import RidingStyle
+from app.models.shop import (
+    BusinessUnit,
+    FulfillmentType,
+    FunnelEvent,
+    Product,
+    ProductImage,
+    ProductSpecies,
+    ShopCart,
+    ShopCartItem,
+    ShopCategory,
+    ShopOrder,
+    ShopOrderEvent,
+    ShopOrderItem,
+    ShopOrderStatus,
+    ShopPayment,
+    ShopPaymentStatus,
+)
 from app.models.species import Species
 from app.models.thread import Thread
 from app.models.user import User, VerificationStatus, RiderType
+from app.models.vendor_profile import VendorProfile, VendorStatus
 
 __all__ = [
     "ActivityType",
@@ -25,10 +43,13 @@ __all__ = [
     "Animal",
     "BookingRequest",
     "BookingStatus",
+    "BusinessUnit",
     "Event",
     "FamilyMember",
     "FriendInvite",
     "FriendInviteStatus",
+    "FulfillmentType",
+    "FunnelEvent",
     "InviteToken",
     "Listing",
     "ListingAvailabilitySlot",
@@ -41,11 +62,26 @@ __all__ = [
     "PaymentType",
     "PlatformFlag",
     "PlatformFlagType",
+    "Product",
+    "ProductImage",
+    "ProductSpecies",
     "Review",
     "RidingStyle",
     "RiderType",
+    "ShopCart",
+    "ShopCartItem",
+    "ShopCategory",
+    "ShopOrder",
+    "ShopOrderEvent",
+    "ShopOrderItem",
+    "ShopOrderStatus",
+    "ShopPayment",
+    "ShopPaymentStatus",
     "SlotStatus",
+    "Species",
     "Thread",
     "User",
+    "VendorProfile",
+    "VendorStatus",
     "VerificationStatus",
 ]

@@ -177,6 +177,25 @@ export function UserMenu({ user: userProp }: UserMenuProps) {
             </>
           ) : null}
 
+          {user.is_vendor || user.is_admin ? (
+            <>
+              <div className={styles.itemGroupLabel}>Shop</div>
+              <Link href="/shop" className={styles.item} onClick={closeMenu}>
+                Browse shop
+              </Link>
+              <Link href="/shop/orders" className={styles.item} onClick={closeMenu}>
+                Shop orders
+              </Link>
+              <Link href="/shop/vendor" className={styles.item} onClick={closeMenu}>
+                Vendor inventory
+              </Link>
+            </>
+          ) : (
+            <Link href="/shop" className={styles.item} onClick={closeMenu}>
+              Shop
+            </Link>
+          )}
+
           {user.is_admin ? (
             <>
               <div className={styles.itemGroupLabel}>Admin</div>

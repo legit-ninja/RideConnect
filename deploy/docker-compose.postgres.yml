@@ -1,0 +1,27 @@
+# Postgres for RideConnect on the shared web host (192.168.3.3).
+# Run from the environment docroot, e.g.:
+#   cd /var/www/phantomequestrian.com && sudo docker compose -f docker-compose.postgres.yml up -d
+# Dev uses a separate compose file or override ports via env.
+#
+# Default host ports avoid clashing with local-dev 5432 and sibling MySQL.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rideconnect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-rideconnect}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5439}:5432"
+    volumes:
+      - rideconnect_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rideconnect} -d ${POSTGRES_DB:-rideconnect}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rideconnect_pgdata:

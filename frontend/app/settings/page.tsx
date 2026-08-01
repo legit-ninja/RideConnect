@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isHorseTrainer, setIsHorseTrainer] = useState(false);
   const [isRidingInstructor, setIsRidingInstructor] = useState(false);
+  const [wantVendor, setWantVendor] = useState(false);
   const [riderSkillLevel, setRiderSkillLevel] = useState("");
   const [riderType, setRiderType] = useState<RiderType>("individual");
   const [familyName, setFamilyName] = useState("");
@@ -70,6 +71,7 @@ export default function SettingsPage() {
         setUser(u);
         setIsHorseTrainer(u.is_horse_trainer);
         setIsRidingInstructor(u.is_riding_instructor);
+        setWantVendor(u.is_vendor);
         setRiderSkillLevel(u.rider_skill_level ? String(u.rider_skill_level) : "");
         applyFamilyProfile(family);
       })
@@ -117,8 +119,10 @@ export default function SettingsPage() {
         is_horse_trainer: isHorseTrainer,
         is_riding_instructor: isRidingInstructor,
         rider_skill_level: riderType === "individual" && riderSkillLevel ? Number(riderSkillLevel) : null,
+        is_vendor: wantVendor && !user?.is_vendor ? true : undefined,
       });
       setUser(updated);
+      setWantVendor(updated.is_vendor);
       setMessage("Profile updated.");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not save profile.");
@@ -334,6 +338,25 @@ export default function SettingsPage() {
             )}
             {user.trainer_verified ? (
               <p className={styles.verifiedBadge}>Verified trainer (admin-confirmed)</p>
+            ) : null}
+            <label className={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={wantVendor}
+                disabled={user.is_vendor}
+                onChange={(e) => setWantVendor(e.target.checked)}
+              />
+              I want to sell supplies (vendor)
+            </label>
+            {user.is_vendor ? (
+              <p className={styles.cardMeta}>
+                Vendor status: {user.vendor_status ?? "pending"}{" "}
+                {user.vendor_status === "approved" ? (
+                  <a href="/shop/vendor">Open vendor inventory</a>
+                ) : (
+                  "(awaiting admin approval)"
+                )}
+              </p>
             ) : null}
             {error ? <p className={styles.errorText}>{error}</p> : null}
             {message ? <p className={styles.successText}>{message}</p> : null}

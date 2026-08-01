@@ -126,3 +126,15 @@ erDiagram
         datetime created_at
         datetime reviewed_at
     }
+
+## Shop (commerce — separate from ride listings)
+
+First-party food & animal care supplies. See migration `020_shop_vendor_funnel`.
+
+- `users.is_vendor` + `vendor_profiles` (pending | approved | suspended)
+- `shop_categories`, `products`, `product_species`, `product_images`
+- `shop_carts` / `shop_cart_items`
+- `shop_orders` / `shop_order_items` / `shop_order_events` / `shop_payments`
+- `funnel_events` with `business_unit` (`rides` | `shop`)
+
+Do **not** reuse `Listing` / `BookingRequest` for SKUs.

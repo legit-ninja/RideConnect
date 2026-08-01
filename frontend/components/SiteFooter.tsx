@@ -1,24 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 
-import styles from "./SiteFooter.module.css";
+import { siteConfig } from "@/lib/site";
 
-function CompassIcon() {
-  return (
-    <svg
-      className={styles.brandMark}
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-    </svg>
-  );
-}
+import styles from "./SiteFooter.module.css";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -29,8 +14,14 @@ export function SiteFooter() {
         <div className={styles.grid}>
           <div>
             <Link href="/" className={styles.brandRow}>
-              <CompassIcon />
-              RideConnect
+              <Image
+                src={siteConfig.logo}
+                alt=""
+                width={29}
+                height={32}
+                className={styles.brandMark}
+              />
+              {siteConfig.name}
             </Link>
             <p className={styles.tagline}>
               A trust-first marketplace connecting verified riders with animal owners
@@ -71,7 +62,7 @@ export function SiteFooter() {
         </div>
 
         <div className={styles.bottom}>
-          <p>&copy; {year} RideConnect. All rights reserved.</p>
+          <p>&copy; {year} {siteConfig.name}. All rights reserved.</p>
           <p>Built with trust at the core</p>
         </div>
       </div>

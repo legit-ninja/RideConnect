@@ -8,8 +8,7 @@ import styles from "@/components/marketplace/marketplace.module.css";
 import type { PublicListing } from "@/lib/api";
 import { buildAuthQuery } from "@/lib/funnel";
 import { getServerApiUrl } from "@/lib/server-api";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { siteConfig } from "@/lib/site";
 
 async function loadListing(slug: string): Promise<PublicListing | null> {
   const response = await fetch(`${getServerApiUrl()}/public/listings/${slug}`, {
@@ -27,28 +26,28 @@ export async function generateMetadata({
   const { slug } = await params;
   const listing = await loadListing(slug);
   if (!listing) {
-    return { title: "Listing not found — RideConnect" };
+    return { title: `Listing not found — ${siteConfig.name}` };
   }
 
   const activity = activityTypeLabel(listing.activity_type);
   const description = `${activity} with ${listing.animal_name} near ${listing.display_location}`;
 
   return {
-    title: `${listing.animal_name} — RideConnect`,
+    title: `${listing.animal_name} — ${siteConfig.name}`,
     description,
     robots: listing.active ? { index: true, follow: true } : { index: false, follow: false },
     openGraph: {
-      title: `${listing.animal_name} on RideConnect`,
+      title: `${listing.animal_name} on ${siteConfig.name}`,
       description,
-      images: [`${SITE_URL}/api/og/${slug}`],
-      url: `${SITE_URL}/l/${slug}`,
+      images: [`${siteConfig.url}/api/og/${slug}`],
+      url: `${siteConfig.url}/l/${slug}`,
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
       title: listing.animal_name,
       description,
-      images: [`${SITE_URL}/api/og/${slug}`],
+      images: [`${siteConfig.url}/api/og/${slug}`],
     },
   };
 }

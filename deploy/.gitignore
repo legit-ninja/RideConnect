@@ -1,0 +1,4 @@
+# Local secrets — never commit
+config.sh
+env.dev.sh
+env.prod.sh

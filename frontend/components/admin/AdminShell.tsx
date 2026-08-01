@@ -20,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/users", label: "Users" },
   { href: "/admin/verification", label: "Verification", badgeKey: "verification" },
   { href: "/admin/listings", label: "Listings", badgeKey: "listings" },
+  { href: "/admin/vendors", label: "Vendors" },
   { href: "/admin/audit", label: "Audit log" },
   { href: "/admin/bookings", label: "Bookings", soon: true },
   { href: "/admin/reports", label: "Reports", soon: true },

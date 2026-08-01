@@ -47,6 +47,7 @@ class User(Base):
     family_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     family_size: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_vendor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     verification_status: Mapped[VerificationStatus] = mapped_column(
         Enum(
             VerificationStatus,
@@ -83,3 +84,6 @@ class User(Base):
     oauth_accounts = relationship("OAuthAccount", back_populates="user")
     animals = relationship("Animal", back_populates="owner")
     listings = relationship("Listing", back_populates="owner")
+    vendor_profile = relationship(
+        "VendorProfile", back_populates="user", uselist=False
+    )

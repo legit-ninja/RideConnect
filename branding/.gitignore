@@ -1,0 +1,4 @@
+# Branding assets pulled from the live WordPress site.
+# Run: ./scripts/extract-logo.sh
+# Do not commit large binary dumps of the whole WP tree here.
+page-source.html

@@ -45,13 +45,14 @@
 }
 
 .brandMark {
-  width: 24px;
-  height: 24px;
-  color: var(--primary);
+  width: 29px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
-.brandMarkTransparent {
-  color: var(--primary);
+.brandName {
+  white-space: nowrap;
 }
 
 .navDesktop {
@@ -189,5 +190,14 @@
 @media (max-width: 767px) {
   .header {
     padding: 0 var(--space-4);
+  }
+
+  .brandName {
+    display: none;
+  }
+
+  .brandMark {
+    width: 52px;
+    height: 56px;
   }
 }

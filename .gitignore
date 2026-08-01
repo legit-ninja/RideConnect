@@ -23,5 +23,10 @@ postgres_data/
 # Local file uploads (dev/test storage backend)
 backend/uploads/
 
+# Deploy secrets (also listed under deploy/.gitignore)
+deploy/config.sh
+deploy/env.dev.sh
+deploy/env.prod.sh
+
 # OS
 .DS_Store

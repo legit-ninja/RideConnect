@@ -1,0 +1,38 @@
+---
+description: RideConnect stack, environments, ports, and safety priorities
+alwaysApply: true
+---
+
+# RideConnect
+
+Trust-first marketplace (Phantom Equestrian) — FastAPI + Next.js + PostgreSQL.
+
+## Environments
+
+| Env | Web | Shop | API | Ports (web/api) | Docroot |
+|-----|-----|------|-----|-----------------|---------|
+| local | localhost:3000 | `/shop` on same | localhost:8000 | — | — |
+| dev | https://dev.phantomequestrian.com | https://shop.dev.phantomequestrian.com | https://api.dev.phantomequestrian.com | 3010 / 8010 | `/var/www/dev.phantomequestrian.com` |
+| prod | https://phantomequestrian.com | https://shop.phantomequestrian.com | https://api.phantomequestrian.com | 3009 / 8009 | `/var/www/phantomequestrian.com` |
+
+Host: `jlee@192.168.3.3`. TLS: shared cert `/etc/letsencrypt/live/underdogunlimited.com/`.
+
+Postgres: system package on `127.0.0.1:5432` (not Docker/Podman). DBs: `rideconnect` (dev), `rideconnect_prod` (prod).
+
+Sibling Node ports on this host: Sound Strategy 3003/3004, PMA 3005/3006, UU 3007/3008, **RideConnect 3009/3010**.
+
+## Non-negotiables
+
+1. Safety & anti-trafficking — no off-platform-only messaging/transactions
+2. Identity verification gates booking/hosting/friend invites
+3. Species-agnostic data model (`animal` + `species`)
+4. Auditable bookings, invites, payments
+
+## Deploy secrets
+
+Never commit `deploy/config.sh` or filled `deploy/env.{dev,prod}.sh`.
+
+## Skills
+
+- Deploy workflow: `.cursor/skills/deploy/SKILL.md`
+- Local dev: `.cursor/skills/local-dev/SKILL.md`

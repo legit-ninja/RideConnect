@@ -228,9 +228,11 @@ def admin_update_roles(
     previous_roles = {
         "is_rider": user.is_rider,
         "is_owner": user.is_owner,
+        "is_vendor": user.is_vendor,
     }
     user.is_rider = payload.is_rider
     user.is_owner = payload.is_owner
+    user.is_vendor = payload.is_vendor
 
     log_admin_action(
         db,
@@ -242,6 +244,7 @@ def admin_update_roles(
             "new": {
                 "is_rider": payload.is_rider,
                 "is_owner": payload.is_owner,
+                "is_vendor": payload.is_vendor,
             },
         },
     )

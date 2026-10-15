@@ -10,16 +10,20 @@
   },
   "dependencies": {
     "@vercel/og": "^0.8.6",
-    "next": "16.2.9",
+    "next": "16.3.8",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "19.2.17",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.3.8",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "fflate": "0.7.5"
   }
 }

@@ -240,3 +240,20 @@ def test_vendor_cannot_cancel_while_payment_pending(
         headers=auth_header(vendor),
     )
     assert response.status_code == 409
+
+
+def test_vendor_cannot_edit_other_vendors_product(
+    client: TestClient, db_session: Session
+) -> None:
+    vendor_a, _ = _vendor_with_product(db_session, "edit-a@test.com", "SKU-EA", "EA")
+    _, product_b = _vendor_with_product(db_session, "edit-b@test.com", "SKU-EB", "EB")
+
+    response = client.patch(
+        f"/shop/vendor/products/{product_b.id}",
+        json={"price_cents": 1, "stock_qty": 0},
+        headers=auth_header(vendor_a),
+    )
+    assert response.status_code == 403
+    db_session.refresh(product_b)
+    assert product_b.price_cents == 1000
+    assert product_b.stock_qty == 5

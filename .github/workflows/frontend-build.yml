@@ -1,6 +1,6 @@
 name: Frontend build
 
-# Builds the Next.js frontend (output: standalone) on Node 20 and uploads a
+# Builds the Next.js frontend (output: standalone) on Node 24 and uploads a
 # deployable tarball as a workflow artifact. Nothing here deploys anywhere.
 #
 # - pull_request / push: verification build with placeholder NEXT_PUBLIC_*
@@ -41,12 +41,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "24"
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
   verify:
-    name: Build (Node 20, placeholder env)
+    name: Build (Node 24, placeholder env)
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -59,12 +59,12 @@ jobs:
       NEXT_PUBLIC_SHOP_URL: https://shop.example.com
       NEXT_PUBLIC_AUTH_COOKIE_DOMAIN: .example.com
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Build the exact PR head (not the merge ref) so the artifact matches the reviewed commit.
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -94,7 +94,7 @@ jobs:
       - name: Package standalone build
         working-directory: .
         run: scripts/package-frontend-artifact.sh ci "$RUNNER_TEMP/dist"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rideconnect-web-ci-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/dist/
@@ -102,7 +102,7 @@ jobs:
           retention-days: 14
 
   release:
-    name: Release build (Node 20, ${{ inputs.target }})
+    name: Release build (Node 24, ${{ inputs.target }})
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -119,10 +119,10 @@ jobs:
       NEXT_PUBLIC_AUTH_COOKIE_DOMAIN: ${{ vars.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN }}
       NEXT_PUBLIC_AUTH_COOKIE_NAME: ${{ vars.NEXT_PUBLIC_AUTH_COOKIE_NAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -141,7 +141,7 @@ jobs:
       - name: Package standalone build
         working-directory: .
         run: scripts/package-frontend-artifact.sh "${{ inputs.target }}" "$RUNNER_TEMP/dist"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rideconnect-web-${{ inputs.target }}-${{ github.sha }}
           path: ${{ runner.temp }}/dist/

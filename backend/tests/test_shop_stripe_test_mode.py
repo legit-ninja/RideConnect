@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 
 import pytest
@@ -19,6 +20,18 @@ from tests.test_shop_payments import (
     _shop_fixture,
 )
 from tests.conftest import auth_header
+
+
+@pytest.fixture(autouse=True)
+def _restore_stripe_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in (
+        "stripe_secret_key",
+        "stripe_publishable_key",
+        "stripe_webhook_secret",
+        "environment",
+        "shop_dev_fake_payments",
+    ):
+        monkeypatch.setattr(settings, name, getattr(settings, name))
 
 
 def _production_stripe(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -183,3 +196,64 @@ def test_dev_fake_payments_refused_in_production(
         headers=auth_header(buyer),
     )
     assert response.status_code == 503
+
+
+def test_shop_config_test_mode_follows_secret_key_only(client: TestClient) -> None:
+    settings.stripe_secret_key = ""
+    settings.stripe_publishable_key = "pk_test_fake"
+    assert client.get("/shop/config").json()["stripe_test_mode"] is False
+    settings.stripe_secret_key = "rk_test_fake"
+    settings.stripe_publishable_key = ""
+    assert client.get("/shop/config").json()["stripe_test_mode"] is True
+
+
+@pytest.mark.parametrize(
+    ("secret", "publishable"),
+    [("sk_live_fake", "pk_test_fake"), ("sk_test_fake", "pk_live_fake")],
+    ids=["live_secret_test_publishable", "test_secret_live_publishable"],
+)
+def test_checkout_refused_when_stripe_key_modes_mismatch(
+    client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    secret: str,
+    publishable: str,
+) -> None:
+    from app.services import stripe_settings
+
+    monkeypatch.setattr(stripe_settings, "_mismatch_logged", None)
+    _production_stripe(monkeypatch)
+    settings.stripe_secret_key = secret
+    settings.stripe_publishable_key = publishable
+    settings.stripe_webhook_secret = "whsec_test"
+    buyer, product = _shop_fixture(db_session)
+    _add_to_cart(db_session, buyer.id, product)
+
+    import stripe
+
+    def _no_stripe(**_kwargs):
+        raise AssertionError("Stripe must not be called on a key mode mismatch")
+
+    monkeypatch.setattr(stripe.checkout.Session, "create", _no_stripe)
+
+    with caplog.at_level(logging.ERROR, logger="app.services.stripe_settings"):
+        response = client.post(
+            "/shop/checkout",
+            json={"fulfillment_type": FulfillmentType.PICKUP.value},
+            headers=auth_header(buyer),
+        )
+        config = client.get("/shop/config").json()
+
+    assert response.status_code == 503
+    assert config["payments_enabled"] is False
+    assert config["stripe_test_mode"] is secret.startswith("sk_test_")
+    assert db_session.scalar(select(func.count()).select_from(ShopOrder)) == 0
+    errors = [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno >= logging.ERROR and "mismatch" in r.getMessage()
+    ]
+    assert len(errors) == 1
+    assert secret not in errors[0] and publishable not in errors[0]
+    assert "fake" not in errors[0]

@@ -1,0 +1,93 @@
+name: Backend migrations
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-migrations.yml"
+  push:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-migrations.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-migrations-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://rideconnect:rideconnect@localhost:5432/rideconnect_ci
+  JWT_SECRET: ci-placeholder-jwt-secret
+
+jobs:
+  alembic-postgres:
+    name: Alembic round trip (Postgres 17)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: rideconnect
+          POSTGRES_PASSWORD: rideconnect
+          POSTGRES_DB: rideconnect_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rideconnect"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Assert migration head and users.is_vendor
+        run: |
+          set -euo pipefail
+          assert_head() {
+            alembic current | tee /tmp/alembic-current.txt
+            grep -q '021_users_is_vendor' /tmp/alembic-current.txt
+            python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, inspect
+
+          engine = create_engine(os.environ["DATABASE_URL"])
+          cols = {c["name"] for c in inspect(engine).get_columns("users")}
+          assert "is_vendor" in cols, f"users.is_vendor missing; columns={sorted(cols)}"
+          PY
+          }
+          alembic upgrade head
+          assert_head
+          # Downgrade to 019 (not base): twenty revisions drop interdependent PostgreSQL
+          # ENUM types; prod path is 019_family_registration → head.
+          alembic downgrade 019_family_registration
+          alembic upgrade head
+          assert_head
+      - name: Simulate prod database at revision 019
+        run: |
+          set -euo pipefail
+          alembic downgrade 019_family_registration
+          alembic upgrade head
+          alembic current | tee /tmp/alembic-current-prod.txt
+          grep -q '021_users_is_vendor' /tmp/alembic-current-prod.txt
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine, inspect
+
+          engine = create_engine(os.environ["DATABASE_URL"])
+          cols = {c["name"] for c in inspect(engine).get_columns("users")}
+          assert "is_vendor" in cols
+          PY

@@ -181,6 +181,29 @@ def test_invalid_transition_refunded_to_fulfilling_returns_409(
     assert response.status_code == 409
 
 
+def test_vendor_cancel_paid_order_records_refund_note(
+    client: TestClient, db_session: Session
+) -> None:
+    buyer = create_user(db_session, email="buyer-refund-note@test.com")
+    vendor, product = _vendor_with_product(
+        db_session, "vendor-refund@test.com", "SKU-REF", "R"
+    )
+    order = _paid_order(db_session, buyer.id, [(product, 1)])
+
+    response = client.patch(
+        f"/shop/vendor/orders/{order.id}",
+        json={"status": ShopOrderStatus.CANCELLED.value},
+        headers=auth_header(vendor),
+    )
+    assert response.status_code == 200
+    db_session.refresh(order)
+    assert order.status == ShopOrderStatus.CANCELLED
+    assert order.payment is not None
+    assert order.payment.status == ShopPaymentStatus.PAID
+    notes = [e.note for e in order.events]
+    assert any(n and "cancelled_needs_refund" in n for n in notes)
+
+
 def test_vendor_cannot_cancel_while_payment_pending(
     client: TestClient, db_session: Session
 ) -> None:

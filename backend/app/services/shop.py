@@ -265,37 +265,65 @@ def mark_order_paid(db: Session, order: ShopOrder, *, payment_intent_id: str | N
         ShopOrderStatus.PICKED_UP,
         ShopOrderStatus.REFUNDED,
     ):
-        return
+        if order.payment and order.payment.status == ShopPaymentStatus.PAID:
+            return
     prev = order.status
-    note = "stripe"
     if prev == ShopOrderStatus.CANCELLED:
-        note = "stripe_paid_after_cancel_needs_refund"
-    elif prev != ShopOrderStatus.PENDING_PAYMENT:
+        if order.payment and order.payment.status == ShopPaymentStatus.PAID:
+            return
+        if order.payment:
+            order.payment.status = ShopPaymentStatus.PAID
+            if payment_intent_id:
+                order.payment.stripe_payment_intent_id = payment_intent_id
+        append_order_event(
+            db,
+            order,
+            to_status=ShopOrderStatus.CANCELLED,
+            actor_id=None,
+            from_status=prev,
+            note="paid_after_cancel_needs_refund",
+        )
+        return
+    if prev != ShopOrderStatus.PENDING_PAYMENT:
         return
     order.status = ShopOrderStatus.PAID
     if order.payment:
         order.payment.status = ShopPaymentStatus.PAID
         if payment_intent_id:
             order.payment.stripe_payment_intent_id = payment_intent_id
-    if prev == ShopOrderStatus.PENDING_PAYMENT:
-        for item in order.items:
-            if item.product_id is None:
-                continue
-            product = db.get(Product, item.product_id)
-            if product is not None:
-                product.stock_qty = max(0, product.stock_qty - item.qty)
+    for item in order.items:
+        if item.product_id is None:
+            continue
+        product = db.get(Product, item.product_id)
+        if product is not None:
+            product.stock_qty = max(0, product.stock_qty - item.qty)
     append_order_event(
-        db, order, to_status=ShopOrderStatus.PAID, actor_id=None, from_status=prev, note=note
+        db, order, to_status=ShopOrderStatus.PAID, actor_id=None, from_status=prev, note="stripe"
     )
+
+
+def vendor_cancel_event_note(
+    from_status: ShopOrderStatus, to_status: ShopOrderStatus, note: str | None
+) -> str | None:
+    if to_status != ShopOrderStatus.CANCELLED:
+        return note
+    if from_status not in (ShopOrderStatus.PAID, ShopOrderStatus.FULFILLING):
+        return note
+    if note:
+        return f"cancelled_needs_refund: {note}"
+    return "cancelled_needs_refund"
 
 
 def create_stripe_checkout_session(order: ShopOrder) -> tuple[str | None, str | None]:
     """Returns (checkout_url, session_id). Both None when Stripe is not configured."""
-    if not settings.stripe_secret_key:
+    from app.services.stripe_settings import effective_stripe_secret_key
+
+    secret = effective_stripe_secret_key()
+    if not secret:
         return None, None
     import stripe
 
-    stripe.api_key = settings.stripe_secret_key
+    stripe.api_key = secret
     line_items = [
         {
             "price_data": {

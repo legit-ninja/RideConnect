@@ -28,6 +28,7 @@ class AdminUserSummary(BaseModel):
     email: str
     is_rider: bool
     is_owner: bool
+    is_vendor: bool = False
     is_horse_trainer: bool
     is_riding_instructor: bool
     trainer_verified: bool
@@ -102,6 +103,7 @@ class UpdateVerificationRequest(BaseModel):
 class UpdateUserRolesRequest(BaseModel):
     is_rider: bool
     is_owner: bool
+    is_vendor: bool = False
 
 
 class UpdateTrainerVerificationRequest(BaseModel):

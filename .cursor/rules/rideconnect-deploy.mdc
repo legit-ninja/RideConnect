@@ -1,0 +1,49 @@
+---
+description: Apache/systemd deploy pipeline, Postgres, and env files for RideConnect
+globs: deploy/**,scripts/deploy.sh,scripts/server-*.sh,scripts/render-app-env.py
+alwaysApply: false
+---
+
+# Deploy and server ops
+
+## Pipeline (UU / Sound Strategy style)
+
+```bash
+./scripts/server-setup.sh          # one-time dirs + Apache templates
+./scripts/server-db.sh dev|prod    # apt Postgres role/DB on :5432
+./scripts/deploy.sh dev|prod       # build, rsync, venv, migrate, systemd, verify
+```
+
+`deploy.sh` forces target-canonical ports (dev 3010/8010, prod 3009/8009) even if `env.*.sh` has the wrong `PORT`/`API_PORT`.
+
+## Env files
+
+- `deploy/env.example.sh` → `deploy/env.dev.sh` / `deploy/env.prod.sh`
+- Rendered to `<docroot>/app/.env` (Next) and `<docroot>/api/.env` (FastAPI)
+- `NEXT_PUBLIC_*` baked at **build** time — fix URLs before `deploy.sh`
+- `DATABASE_URL` must use `127.0.0.1:5432` (never Docker ports 5439/5440)
+- Prefer separate DBs: `rideconnect` (dev) vs `rideconnect_prod` (prod)
+
+## Prod cutover
+
+- Legacy WP vhost files in `sites-enabled` must be **removed** (not only `a2dissite`) — they are often plain files, not symlinks
+- WP tree already under `/var/www/_backups/phantomequestrian.com/`
+- Cert SANs already include apex, www, dev, api, api.dev
+
+## Shell anti-patterns
+
+| Pitfall | Fix |
+|---------|-----|
+| bash `source` of `.env` | Secrets with `#`/`^` break; let pydantic/alembic load `.env` from cwd |
+| Incomplete `.venv` (dir exists, no pip) | Recreate when `python -m pip` fails |
+| Verify wrong ports | Always use target defaults, not env `PORT` from the other target |
+| `grep -c \|\| echo 0` | Use `grep -q` + explicit 0/1 flags |
+
+## Services
+
+| Target | systemd units |
+|--------|----------------|
+| dev | `rideconnect-web-dev`, `rideconnect-api-dev` |
+| prod | `rideconnect-web`, `rideconnect-api` |
+
+Debug: `journalctl -u rideconnect-api -n 40` / `curl -I http://127.0.0.1:8009/health`

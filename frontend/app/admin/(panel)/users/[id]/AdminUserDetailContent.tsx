@@ -46,6 +46,7 @@ export function AdminUserDetailContent() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isRider, setIsRider] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [isVendor, setIsVendor] = useState(false);
   const [trainerVerified, setTrainerVerified] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -58,6 +59,7 @@ export function AdminUserDetailContent() {
         setUser(detail);
         setIsRider(detail.is_rider);
         setIsOwner(detail.is_owner);
+        setIsVendor(detail.is_vendor);
         setTrainerVerified(detail.trainer_verified);
       })
       .catch((err: unknown) => {
@@ -128,6 +130,7 @@ export function AdminUserDetailContent() {
       const updated = await updateUserRoles(token, user.id, {
         is_rider: isRider,
         is_owner: isOwner,
+        is_vendor: isVendor,
       });
       setUser(updated);
       setSuccess("Roles updated. Action logged.");
@@ -317,6 +320,14 @@ export function AdminUserDetailContent() {
                 onChange={(event) => setIsOwner(event.target.checked)}
               />{" "}
               Owner
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={isVendor}
+                onChange={(event) => setIsVendor(event.target.checked)}
+              />{" "}
+              Vendor
             </label>
             <button
               type="button"

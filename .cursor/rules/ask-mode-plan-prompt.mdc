@@ -1,0 +1,14 @@
+---
+description: In Ask mode, when enough context exists for a feature or bugfix, provide a ready-to-paste Plan prompt.
+alwaysApply: true
+---
+
+# Ask mode → Plan prompt
+
+When the user is exploring a **new feature** or **bug fix** in Ask mode and you have enough product/technical context to scope the work:
+
+1. Answer their questions clearly.
+2. End with a **"Plan prompt"** section containing a complete, copy-pasteable prompt for **Plan mode** (or Agent Plan).
+3. The Plan prompt must include: goal, context/constraints, in-scope / out-of-scope, affected areas (files/systems if known), acceptance criteria, and open questions only if blocking.
+4. If information is still insufficient, ask 1–2 clarifying questions instead of inventing a Plan prompt.
+5. Do not implement changes in Ask mode; the Plan prompt is the handoff artifact.

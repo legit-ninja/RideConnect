@@ -13,6 +13,8 @@ class RegisterRequest(BaseModel):
     last_name: str = Field(min_length=1, max_length=100)
     is_rider: bool = True
     is_owner: bool = True
+    is_vendor: bool = False
+    vendor_display_name: str | None = Field(default=None, max_length=120)
 
 
 class LoginRequest(BaseModel):
@@ -29,6 +31,8 @@ class UpdateProfileRequest(BaseModel):
     is_horse_trainer: bool | None = None
     is_riding_instructor: bool | None = None
     rider_skill_level: int | None = Field(default=None, ge=1, le=5)
+    is_vendor: bool | None = None
+    vendor_display_name: str | None = Field(default=None, max_length=120)
 
 
 class UserResponse(BaseModel):
@@ -38,6 +42,7 @@ class UserResponse(BaseModel):
     last_name: str
     is_rider: bool
     is_owner: bool
+    is_vendor: bool
     is_horse_trainer: bool
     is_riding_instructor: bool
     trainer_verified: bool
@@ -50,5 +55,6 @@ class UserResponse(BaseModel):
     is_minor: bool
     created_at: datetime
     avatar_url: str | None = None
+    vendor_status: str | None = None
 
     model_config = {"from_attributes": True}

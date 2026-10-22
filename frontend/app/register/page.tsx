@@ -21,6 +21,7 @@ function RegisterForm() {
   const [lastName, setLastName] = useState("");
   const [isRider, setIsRider] = useState(true);
   const [isOwner, setIsOwner] = useState(true);
+  const [isVendor, setIsVendor] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +41,7 @@ function RegisterForm() {
           last_name: lastName,
           is_rider: isRider,
           is_owner: isOwner,
+          is_vendor: isVendor,
         },
         { src: src ?? undefined, ref: ref ?? undefined },
       );
@@ -120,6 +122,14 @@ function RegisterForm() {
               onChange={(e) => setIsOwner(e.target.checked)}
             />
             I am an owner
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={isVendor}
+              onChange={(e) => setIsVendor(e.target.checked)}
+            />
+            I want to sell supplies (vendor — pending approval)
           </label>
         </div>
         {error ? <p className={styles.error}>{error}</p> : null}

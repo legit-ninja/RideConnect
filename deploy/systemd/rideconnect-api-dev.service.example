@@ -1,0 +1,20 @@
+# Copy to /etc/systemd/system/rideconnect-api-dev.service on the server.
+# Dev API listens on 8010.
+
+[Unit]
+Description=RideConnect API (FastAPI) — dev
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dev.phantomequestrian.com/api
+Environment=PORT=8010
+ExecStart=/var/www/dev.phantomequestrian.com/api/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8010
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

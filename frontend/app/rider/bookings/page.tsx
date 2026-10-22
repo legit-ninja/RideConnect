@@ -17,6 +17,7 @@ import {
 import styles from "@/components/marketplace/marketplace.module.css";
 import { ApiError, BookingRequest, User, createBookingReview, fetchBookings, fetchCurrentUser } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { siteConfig } from "@/lib/site";
 
 export default function RiderBookingsPage() {
   const router = useRouter();
@@ -83,7 +84,7 @@ export default function RiderBookingsPage() {
     <div className={styles.listingsPage}>
       <PageHeader
         title="My bookings"
-        description="Ride requests you have submitted on RideConnect."
+        description={`Ride requests you have submitted on ${siteConfig.name}.`}
       />
       <BlockedAction user={user} action="view bookings" />
       {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}

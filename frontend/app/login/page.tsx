@@ -8,6 +8,7 @@ import styles from "../auth.module.css";
 import { ApiError, fetchCurrentUser, loginUser } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import { buildAuthQuery, postAuthPath } from "@/lib/funnel";
+import { siteConfig } from "@/lib/site";
 
 function LoginForm() {
   const router = useRouter();
@@ -49,7 +50,7 @@ function LoginForm() {
   return (
     <div className={styles.authForm}>
       <h1>Sign in</h1>
-      <p>Use your RideConnect account or admin credentials.</p>
+      <p>Use your {siteConfig.name} account or admin credentials.</p>
       <form className={styles.authForm} onSubmit={handleSubmit}>
         <div className={styles.field}>
           <label htmlFor="email">Email</label>

@@ -6,6 +6,7 @@ import { InviteRedeemPanel } from "@/components/marketplace/InviteActions";
 import type { PublicInvitePreview } from "@/lib/api";
 import { buildAuthQuery } from "@/lib/funnel";
 import { getServerApiUrl } from "@/lib/server-api";
+import { siteConfig } from "@/lib/site";
 
 async function loadInvite(token: string): Promise<PublicInvitePreview> {
   const response = await fetch(`${getServerApiUrl()}/public/invites/${token}`, {
@@ -32,8 +33,8 @@ export async function generateMetadata({
   const { token } = await params;
   const invite = await loadInvite(token);
   const title = invite.owner_first_name
-    ? `Invite from ${invite.owner_first_name} — RideConnect`
-    : "Friend invite — RideConnect";
+    ? `Invite from ${invite.owner_first_name} — ${siteConfig.name}`
+    : `Friend invite — ${siteConfig.name}`;
   return {
     title,
     robots: { index: false, follow: false },

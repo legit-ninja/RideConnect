@@ -1,3 +1,5 @@
+import { siteConfig } from "@/lib/site";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type VerificationStatus =
@@ -13,6 +15,7 @@ export interface User {
   email: string;
   is_rider: boolean;
   is_owner: boolean;
+  is_vendor: boolean;
   is_horse_trainer: boolean;
   is_riding_instructor: boolean;
   trainer_verified: boolean;
@@ -27,6 +30,7 @@ export interface User {
   first_name: string;
   last_name: string;
   avatar_url?: string | null;
+  vendor_status?: string | null;
 }
 
 export interface TokenResponse {
@@ -142,6 +146,7 @@ export interface AdminUserSummary {
   email: string;
   is_rider: boolean;
   is_owner: boolean;
+  is_vendor: boolean;
   is_horse_trainer: boolean;
   is_riding_instructor: boolean;
   trainer_verified: boolean;
@@ -261,6 +266,8 @@ export function registerUser(
     last_name: string;
     is_rider: boolean;
     is_owner: boolean;
+    is_vendor?: boolean;
+    vendor_display_name?: string;
   },
   funnel?: { src?: string; ref?: string },
 ): Promise<User> {
@@ -295,6 +302,8 @@ export function updateProfile(
     is_horse_trainer?: boolean;
     is_riding_instructor?: boolean;
     rider_skill_level?: number | null;
+    is_vendor?: boolean;
+    vendor_display_name?: string;
   },
 ): Promise<User> {
   return request<User>(
@@ -398,7 +407,7 @@ export function updateUserVerification(
 export function updateUserRoles(
   token: string,
   userId: string,
-  payload: { is_rider: boolean; is_owner: boolean },
+  payload: { is_rider: boolean; is_owner: boolean; is_vendor?: boolean },
 ): Promise<AdminUserDetail> {
   return request<AdminUserDetail>(
     `/admin/users/${userId}/roles`,
@@ -799,10 +808,8 @@ export interface AdminPlatformFlagListResponse {
   total: number;
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 export function publicListingUrl(slug: string): string {
-  return `${SITE_URL}/l/${slug}`;
+  return `${siteConfig.url}/l/${slug}`;
 }
 
 export function fetchPublicListing(slug: string): Promise<PublicListing> {
@@ -1060,4 +1067,296 @@ export function postThreadMessage(
     { method: "POST", body: JSON.stringify({ body }) },
     token,
   );
+}
+
+/* --- Shop (food & animal care supplies) --- */
+
+export type ShopOrderStatus =
+  | "pending_payment"
+  | "paid"
+  | "fulfilling"
+  | "shipped"
+  | "picked_up"
+  | "cancelled"
+  | "refunded";
+
+export type FulfillmentType = "ship" | "pickup";
+
+export interface ShopCategory {
+  id: string;
+  slug: string;
+  name: string;
+  sort_order: number;
+  active: boolean;
+}
+
+export interface ShopProduct {
+  id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  stock_qty: number;
+  active: boolean;
+  category_id: string;
+  category_slug: string | null;
+  category_name: string | null;
+  vendor_profile_id: string;
+  species: { id: string; name: string }[];
+  images: { id: string; url: string; sort_order: number }[];
+  created_at: string;
+}
+
+export interface ShopProductList {
+  items: ShopProduct[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface ShopCartItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_sku: string;
+  unit_price_cents: number;
+  qty: number;
+  line_total_cents: number;
+  stock_qty: number;
+}
+
+export interface ShopCart {
+  id: string;
+  items: ShopCartItem[];
+  subtotal_cents: number;
+}
+
+export interface ShopOrder {
+  id: string;
+  status: ShopOrderStatus;
+  fulfillment_type: FulfillmentType;
+  ship_name: string | null;
+  ship_line1: string | null;
+  ship_line2: string | null;
+  ship_city: string | null;
+  ship_state: string | null;
+  ship_postal: string | null;
+  ship_country: string | null;
+  subtotal_cents: number;
+  tax_cents: number;
+  shipping_cents: number;
+  total_cents: number;
+  currency: string;
+  items: {
+    id: string;
+    product_id: string | null;
+    product_name: string;
+    product_sku: string;
+    unit_price_cents: number;
+    qty: number;
+  }[];
+  events: {
+    id: string;
+    from_status: string | null;
+    to_status: string;
+    note: string | null;
+    created_at: string;
+  }[];
+  payment_status: string | null;
+  created_at: string;
+}
+
+export interface VendorProfile {
+  id: string;
+  user_id: string;
+  display_name: string;
+  bio: string | null;
+  status: "pending" | "approved" | "suspended";
+  created_at: string;
+}
+
+export function formatCents(cents: number, currency = "USD"): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
+    cents / 100,
+  );
+}
+
+export function fetchShopCategories(): Promise<ShopCategory[]> {
+  return request<ShopCategory[]>("/shop/categories");
+}
+
+export function fetchShopProducts(params?: {
+  category?: string;
+  species_id?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ShopProductList> {
+  const search = new URLSearchParams();
+  if (params?.category) search.set("category", params.category);
+  if (params?.species_id) search.set("species_id", params.species_id);
+  if (params?.q) search.set("q", params.q);
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.offset != null) search.set("offset", String(params.offset));
+  const query = search.toString();
+  return request<ShopProductList>(query ? `/shop/products?${query}` : "/shop/products");
+}
+
+export function fetchShopProduct(productId: string): Promise<ShopProduct> {
+  return request<ShopProduct>(`/shop/products/${productId}`);
+}
+
+export function fetchShopCart(token: string): Promise<ShopCart> {
+  return request<ShopCart>("/shop/cart", {}, token);
+}
+
+export function addToShopCart(
+  token: string,
+  productId: string,
+  qty = 1,
+): Promise<ShopCart> {
+  return request<ShopCart>(
+    "/shop/cart",
+    { method: "POST", body: JSON.stringify({ product_id: productId, qty }) },
+    token,
+  );
+}
+
+export function updateShopCartItem(
+  token: string,
+  itemId: string,
+  qty: number,
+): Promise<ShopCart> {
+  return request<ShopCart>(
+    `/shop/cart/items/${itemId}`,
+    { method: "PATCH", body: JSON.stringify({ qty }) },
+    token,
+  );
+}
+
+export function shopCheckout(
+  token: string,
+  payload: {
+    fulfillment_type: FulfillmentType;
+    ship_name?: string;
+    ship_line1?: string;
+    ship_line2?: string;
+    ship_city?: string;
+    ship_state?: string;
+    ship_postal?: string;
+    ship_country?: string;
+  },
+): Promise<{
+  order_id: string;
+  checkout_url: string | null;
+  status: ShopOrderStatus;
+  total_cents: number;
+}> {
+  return request("/shop/checkout", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export function fetchShopOrders(token: string): Promise<{ items: ShopOrder[]; total: number }> {
+  return request("/shop/orders", {}, token);
+}
+
+export function fetchShopOrder(token: string, orderId: string): Promise<ShopOrder> {
+  return request<ShopOrder>(`/shop/orders/${orderId}`, {}, token);
+}
+
+export function fetchVendorProducts(
+  token: string,
+): Promise<ShopProductList> {
+  return request<ShopProductList>("/shop/vendor/products", {}, token);
+}
+
+export function createVendorProduct(
+  token: string,
+  payload: {
+    category_id: string;
+    sku: string;
+    name: string;
+    description?: string;
+    price_cents: number;
+    stock_qty: number;
+    active?: boolean;
+    species_ids?: string[];
+  },
+): Promise<ShopProduct> {
+  return request<ShopProduct>(
+    "/shop/vendor/products",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function updateVendorProduct(
+  token: string,
+  productId: string,
+  payload: {
+    name?: string;
+    description?: string;
+    price_cents?: number;
+    stock_qty?: number;
+    active?: boolean;
+    category_id?: string;
+    species_ids?: string[];
+  },
+): Promise<ShopProduct> {
+  return request<ShopProduct>(
+    `/shop/vendor/products/${productId}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function fetchVendorOrders(
+  token: string,
+): Promise<{ items: ShopOrder[]; total: number }> {
+  return request("/shop/vendor/orders", {}, token);
+}
+
+export function fulfillVendorOrder(
+  token: string,
+  orderId: string,
+  status: ShopOrderStatus,
+  note?: string,
+): Promise<ShopOrder> {
+  return request<ShopOrder>(
+    `/shop/vendor/orders/${orderId}`,
+    { method: "PATCH", body: JSON.stringify({ status, note }) },
+    token,
+  );
+}
+
+export function fetchAdminVendors(token: string): Promise<VendorProfile[]> {
+  return request<VendorProfile[]>("/shop/admin/vendors", {}, token);
+}
+
+export function updateAdminVendor(
+  token: string,
+  vendorId: string,
+  status: "pending" | "approved" | "suspended",
+  note?: string,
+): Promise<VendorProfile> {
+  return request<VendorProfile>(
+    `/shop/admin/vendors/${vendorId}`,
+    { method: "PATCH", body: JSON.stringify({ status, note }) },
+    token,
+  );
+}
+
+export function postFunnelEvent(
+  payload: {
+    business_unit: "rides" | "shop";
+    stage: string;
+    anon_id?: string;
+    src?: string;
+    ref?: string;
+    path?: string;
+    payload?: Record<string, unknown>;
+  },
+  token?: string | null,
+): Promise<{ id: string; ok: boolean }> {
+  return request("/funnel/events", { method: "POST", body: JSON.stringify(payload) }, token);
 }

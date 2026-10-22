@@ -3,6 +3,7 @@ import { ImageResponse } from "next/og";
 import { activityTypeLabel } from "@/components/marketplace/marketplaceLabels";
 import type { PublicListing } from "@/lib/api";
 import { getServerApiUrl } from "@/lib/server-api";
+import { siteConfig } from "@/lib/site";
 
 export const runtime = "edge";
 
@@ -31,12 +32,12 @@ export async function GET(
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "#1a1a1a",
-            color: "#fff",
+            background: "#0b1220",
+            color: "#e8eef6",
             fontSize: 48,
           }}
         >
-          RideConnect
+          {siteConfig.name}
         </div>
       ),
       { width: 1200, height: 630 },
@@ -53,8 +54,8 @@ export async function GET(
           width: "100%",
           height: "100%",
           display: "flex",
-          background: "#0f1419",
-          color: "#f5f5f5",
+          background: "#0b1220",
+          color: "#e8eef6",
           fontFamily: "system-ui, sans-serif",
         }}
       >
@@ -66,7 +67,7 @@ export async function GET(
             style={{ width: 420, height: "100%", objectFit: "cover" }}
           />
         ) : (
-          <div style={{ width: 420, height: "100%", background: "#2a3441" }} />
+          <div style={{ width: 420, height: "100%", background: "#152238" }} />
         )}
         <div
           style={{
@@ -79,7 +80,7 @@ export async function GET(
           }}
         >
           <div style={{ fontSize: 52, fontWeight: 700 }}>{listing.animal_name}</div>
-          <div style={{ fontSize: 28, color: "#c9d1d9" }}>
+          <div style={{ fontSize: 28, color: "#9ab8c8" }}>
             {activity} · {listing.display_location}
           </div>
           {listing.owner_verified ? (
@@ -96,8 +97,8 @@ export async function GET(
               Verified owner
             </div>
           ) : null}
-          <div style={{ marginTop: "auto", fontSize: 24, color: "#8b949e" }}>
-            RideConnect
+          <div style={{ marginTop: "auto", fontSize: 24, color: "#7ba3d4" }}>
+            {siteConfig.name}
           </div>
         </div>
       </div>

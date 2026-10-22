@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/marketplace/PageHeader";
 import styles from "@/components/marketplace/marketplace.module.css";
 import { Animal, ApiError, User, fetchCurrentUser, fetchOwnerAnimals } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { siteConfig } from "@/lib/site";
 
 export default function OwnerAnimalsPage() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function OwnerAnimalsPage() {
 
   return (
     <div className={styles.listingsPage}>
-      <PageHeader title="My animals" description="Animals you host on RideConnect." />
+      <PageHeader title="My animals" description={`Animals you host on ${siteConfig.name}.`} />
       <BlockedAction user={user} action="manage animals" />
       {error ? <InlineAlert variant="error">{error}</InlineAlert> : null}
       {user.verification_status === "verified" ? (

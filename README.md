@@ -111,6 +111,34 @@ Set `SEED_DEV_DATA=true` or `ENVIRONMENT=development` in `.env` for the seed scr
 
 **Never commit** `.env` or `.env.local`.
 
+## Deploy (dev / prod on 192.168.3.3)
+
+Same pipeline as Underdog Unlimited and Sound Strategy: local build → rsync → Apache TLS proxy → systemd. RideConnect adds FastAPI + system PostgreSQL.
+
+| Env | Web | API | Ports | DB |
+|-----|-----|-----|-------|-----|
+| local | http://localhost:3000 | http://localhost:8000 | — | Docker |
+| dev | https://dev.phantomequestrian.com | https://api.dev.phantomequestrian.com | 3010 / 8010 | `rideconnect` |
+| prod | https://phantomequestrian.com | https://api.phantomequestrian.com | 3009 / 8009 | `rideconnect_prod` |
+
+Sibling Node ports on this host: Sound Strategy 3003/3004, PMA 3005/3006, Underdog Unlimited 3007/3008.
+
+```bash
+cp deploy/config.example.sh deploy/config.sh
+cp deploy/env.example.sh deploy/env.dev.sh
+cp deploy/env.example.sh deploy/env.prod.sh
+# Fill secrets; use 127.0.0.1:5432 and correct public URLs per target
+chmod +x scripts/server-setup.sh scripts/server-db.sh scripts/deploy.sh scripts/extract-logo.sh
+./scripts/server-setup.sh
+./scripts/server-db.sh dev
+./scripts/server-db.sh prod
+./scripts/extract-logo.sh
+./scripts/deploy.sh dev
+./scripts/deploy.sh prod
+```
+
+See `.cursor/skills/deploy/SKILL.md` and `.cursor/skills/local-dev/SKILL.md`.
+
 ## License
 
 Copyright © 2026 Phantom Equestrian. All rights reserved.

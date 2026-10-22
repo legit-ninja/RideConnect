@@ -24,6 +24,7 @@ import {
   fetchListingOpenSlots,
 } from "@/lib/api";
 import { getToken } from "@/lib/auth";
+import { siteConfig } from "@/lib/site";
 
 const INQUIRY_NOTE_MIN_LENGTH = 10;
 
@@ -186,7 +187,7 @@ export default function ListingDetailPage() {
     if (success) {
       return (
         <InlineAlert variant="success">
-          Your request was submitted on RideConnect.{" "}
+          Your request was submitted on {siteConfig.name}.{" "}
           <Link href="/rider/bookings">View my bookings</Link>
         </InlineAlert>
       );
@@ -412,7 +413,7 @@ export default function ListingDetailPage() {
         <h2>Request a ride</h2>
         {renderBookingSection()}
         <p className={`${styles.cardMeta} ${styles.cardMetaSpaced}`}>
-          All bookings and payments stay on RideConnect for your safety.
+          All bookings and payments stay on {siteConfig.name} for your safety.
         </p>
       </div>
     </div>

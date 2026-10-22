@@ -7,8 +7,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import app.db as db_module
 from app.db import Base, get_db
-from app.main import app
+from app.main import app as api_app
+import app.models  # noqa: F401 — ensure shop/vendor tables in metadata
 from app.models.species import Species
 from app.models.user import User, VerificationStatus
 from app.services.security import create_access_token, hash_password
@@ -31,12 +33,18 @@ def db_session() -> Generator[Session, None, None]:
     )
     Base.metadata.create_all(bind=engine)
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    previous_engine = db_module.engine
+    previous_session_factory = db_module.SessionLocal
+    db_module.engine = engine
+    db_module.SessionLocal = session_factory
     session = session_factory()
     try:
         yield session
     finally:
         session.close()
         Base.metadata.drop_all(bind=engine)
+        db_module.engine = previous_engine
+        db_module.SessionLocal = previous_session_factory
 
 
 @pytest.fixture
@@ -44,10 +52,10 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     def override_get_db() -> Generator[Session, None, None]:
         yield db_session
 
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
+    api_app.dependency_overrides[get_db] = override_get_db
+    with TestClient(api_app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()
+    api_app.dependency_overrides.clear()
 
 
 @pytest.fixture

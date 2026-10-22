@@ -15,7 +15,7 @@ Trust-first marketplace (Phantom Equestrian) — FastAPI + Next.js + PostgreSQL.
 | dev | https://dev.phantomequestrian.com | https://shop.dev.phantomequestrian.com | https://api.dev.phantomequestrian.com | 3010 / 8010 | `/var/www/dev.phantomequestrian.com` |
 | prod | https://phantomequestrian.com | https://shop.phantomequestrian.com | https://api.phantomequestrian.com | 3009 / 8009 | `/var/www/phantomequestrian.com` |
 
-Host: `jlee@192.168.3.3`. TLS: shared cert `/etc/letsencrypt/live/underdogunlimited.com/`.
+Deploy SSH host and TLS cert paths: `deploy/config.sh` (see `deploy/config.sh.example`).
 
 Postgres: system package on `127.0.0.1:5432` (not Docker/Podman). DBs: `rideconnect` (dev), `rideconnect_prod` (prod).
 

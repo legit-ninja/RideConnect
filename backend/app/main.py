@@ -26,6 +26,7 @@ from app.routers import (
     users,
 )
 from app.seed import ensure_admin_user
+from app.startup_schema import assert_database_schema_ready
 
 app = FastAPI(
     title="RideConnect API",
@@ -68,6 +69,7 @@ app.include_router(funnel.router)
 
 @app.on_event("startup")
 def on_startup() -> None:
+    assert_database_schema_ready()
     ensure_admin_user()
     from app.seed import ensure_platform_vendor_profile
 

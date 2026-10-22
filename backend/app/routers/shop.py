@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -35,6 +36,7 @@ from app.schemas.shop import (
     ProductResponse,
     ProductUpdateRequest,
     ShopCategoryResponse,
+    ShopPublicConfigResponse,
     VendorApplyRequest,
     VendorOrderFulfillRequest,
     VendorProfileResponse,
@@ -52,16 +54,99 @@ from app.services.shop import (
     product_to_response,
     resolve_vendor_profile_for_writes,
     validate_checkout_address,
+    validate_vendor_order_transition,
+    vendor_cancel_event_note,
+    vendor_owns_all_order_products,
+    VENDOR_ORDER_TRANSITIONS,
+)
+from app.services.stripe_settings import (
+    checkout_payments_available,
+    effective_stripe_secret_key,
+    effective_stripe_webhook_secret,
+    stripe_secret_key_configured,
+    stripe_test_mode_active,
+    stripe_webhook_secret_configured,
 )
 
 router = APIRouter(prefix="/shop", tags=["shop"])
+logger = logging.getLogger(__name__)
 
-_VENDOR_FULFILL_STATUSES = {
-    ShopOrderStatus.FULFILLING,
-    ShopOrderStatus.SHIPPED,
-    ShopOrderStatus.PICKED_UP,
-    ShopOrderStatus.CANCELLED,
-}
+_VENDOR_FULFILL_STATUSES = frozenset(
+    target for targets in VENDOR_ORDER_TRANSITIONS.values() for target in targets
+)
+
+
+def _require_checkout_payments() -> None:
+    if checkout_payments_available():
+        return
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Payments are not configured",
+    )
+
+
+def _apply_paid_checkout_session(
+    db: Session, session: dict
+) -> None:
+    order_id_raw = session.get("metadata", {}).get("order_id") or session.get(
+        "client_reference_id"
+    )
+    if not order_id_raw:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing order id"
+        )
+    try:
+        order_uuid = UUID(str(order_id_raw))
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order id"
+        ) from exc
+    order = db.scalar(
+        select(ShopOrder)
+        .options(joinedload(ShopOrder.items), joinedload(ShopOrder.payment))
+        .where(ShopOrder.id == order_uuid)
+    )
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Order not found"
+        )
+    amount_total = session.get("amount_total")
+    if amount_total is None or int(amount_total) != order.total_cents:
+        logger.warning(
+            "stripe webhook amount mismatch order=%s expected=%s got=%s",
+            order.id,
+            order.total_cents,
+            amount_total,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Payment amount mismatch"
+        )
+    session_currency = (session.get("currency") or "").upper()
+    if session_currency and session_currency != order.currency.upper():
+        logger.warning(
+            "stripe webhook currency mismatch order=%s expected=%s got=%s",
+            order.id,
+            order.currency,
+            session_currency,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Payment currency mismatch"
+        )
+    mark_order_paid(
+        db,
+        order,
+        payment_intent_id=session.get("payment_intent"),
+    )
+    db.commit()
+
+
+@router.get("/config", response_model=ShopPublicConfigResponse)
+def shop_public_config() -> ShopPublicConfigResponse:
+    # Authz: public shop payment metadata (no secrets).
+    return ShopPublicConfigResponse(
+        payments_enabled=checkout_payments_available(),
+        stripe_test_mode=stripe_test_mode_active(),
+    )
 
 
 @router.get("/categories", response_model=list[ShopCategoryResponse])
@@ -205,6 +290,7 @@ def checkout(
 ) -> CheckoutResponse:
     # Authz: authenticated buyer; KYC not required for shop checkout.
     validate_checkout_address(payload.fulfillment_type, payload)
+    _require_checkout_payments()
     cart = db.scalar(
         select(ShopCart)
         .options(joinedload(ShopCart.items).joinedload(ShopCartItem.product))
@@ -281,8 +367,7 @@ def checkout(
     checkout_url, session_id = create_stripe_checkout_session(order)
     if session_id:
         payment.stripe_checkout_session_id = session_id
-    elif not settings.stripe_secret_key:
-        # Dev stub: mark paid immediately when Stripe keys are absent.
+    else:
         mark_order_paid(db, order, payment_intent_id=None)
         checkout_url = f"{settings.frontend_base_url.rstrip('/')}/shop/orders/{order.id}?paid=1"
 
@@ -300,48 +385,44 @@ def checkout(
 
 @router.post("/webhooks/stripe")
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)) -> dict[str, bool]:
-    # Authz: Stripe signature verification (or open in dev when secret unset — still no user auth).
+    # Authz: Stripe signature verification only — no user auth.
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
-    if not settings.stripe_secret_key:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Stripe not configured")
+    if not stripe_secret_key_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Stripe not configured"
+        )
+    webhook_secret = effective_stripe_webhook_secret()
+    if not webhook_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe webhook not configured",
+        )
 
     import stripe
 
-    stripe.api_key = settings.stripe_secret_key
-    event = None
-    if settings.stripe_webhook_secret:
-        try:
-            event = stripe.Webhook.construct_event(
-                payload, sig, settings.stripe_webhook_secret
-            )
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature"
-            ) from exc
-    else:
-        import json
+    stripe.api_key = effective_stripe_secret_key()
+    try:
+        event = stripe.Webhook.construct_event(payload, sig, webhook_secret)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature"
+        ) from exc
 
-        event = stripe.Event.construct_from(json.loads(payload), stripe.api_key)
-
-    if event["type"] == "checkout.session.completed":
+    event_type = event["type"]
+    if event_type == "checkout.session.completed":
         session = event["data"]["object"]
-        order_id = session.get("metadata", {}).get("order_id") or session.get(
-            "client_reference_id"
+        if session.get("payment_status") != "paid":
+            return {"ok": True}
+        _apply_paid_checkout_session(db, session)
+    elif event_type == "checkout.session.async_payment_succeeded":
+        session = event["data"]["object"]
+        _apply_paid_checkout_session(db, session)
+    elif event_type == "checkout.session.async_payment_failed":
+        logger.info(
+            "stripe async payment failed for session %s",
+            event.get("data", {}).get("object", {}).get("id"),
         )
-        if order_id:
-            order = db.scalar(
-                select(ShopOrder)
-                .options(joinedload(ShopOrder.items), joinedload(ShopOrder.payment))
-                .where(ShopOrder.id == UUID(order_id))
-            )
-            if order is not None:
-                mark_order_paid(
-                    db,
-                    order,
-                    payment_intent_id=session.get("payment_intent"),
-                )
-                db.commit()
     return {"ok": True}
 
 
@@ -571,7 +652,7 @@ def vendor_fulfill_order(
     if payload.status not in _VENDOR_FULFILL_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid fulfillment status transition",
+            detail="Invalid fulfillment status",
         )
     order = db.scalar(
         select(ShopOrder)
@@ -586,24 +667,21 @@ def vendor_fulfill_order(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
     if not current_user.is_admin:
         profile = resolve_vendor_profile_for_writes(db, current_user)
-        product_ids = [i.product_id for i in order.items if i.product_id]
-        owned = db.scalar(
-            select(func.count())
-            .select_from(Product)
-            .where(Product.id.in_(product_ids), Product.vendor_profile_id == profile.id)
-        )
-        if not owned:
+        if not vendor_owns_all_order_products(db, order, profile.id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
+
+    validate_vendor_order_transition(order.status, payload.status)
 
     prev = order.status
     order.status = payload.status
+    event_note = vendor_cancel_event_note(prev, payload.status, payload.note)
     append_order_event(
         db,
         order,
         to_status=payload.status,
         actor_id=current_user.id,
         from_status=prev,
-        note=payload.note,
+        note=event_note,
     )
     db.commit()
     db.refresh(order)

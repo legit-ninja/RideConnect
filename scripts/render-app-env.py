@@ -7,8 +7,10 @@ Modes:
 """
 from __future__ import annotations
 
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -69,7 +71,19 @@ def main() -> int:
         print(f"Missing input file: {src}", file=sys.stderr)
         return 1
 
-    dest.write_text(render_env(parse_env_file(src), mode=mode))
+    content = render_env(parse_env_file(src), mode=mode)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(
+        dir=dest.parent, prefix=f".{dest.name}.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, dest)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
     return 0
 
 

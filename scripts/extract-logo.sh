@@ -12,7 +12,7 @@ trap 'rm -f "$TMP_HTML"' EXIT
 
 echo "==> Fetching ${SITE_URL}"
 CURL_OPTS=(-fsSL -A "RideConnectBrandBot/1.0")
-# Cert may be expired until SANs are expanded on 192.168.3.3
+# Cert may be expired until SANs are expanded on the deploy host
 if [[ "${CURL_INSECURE:-1}" == "1" ]]; then
   CURL_OPTS+=(-k)
 fi

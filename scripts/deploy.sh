@@ -2,6 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=deploy-tempfiles.sh
+source "$ROOT/scripts/deploy-tempfiles.sh"
+deploy_tempfiles_init
 FRONTEND="$ROOT/frontend"
 BACKEND="$ROOT/backend"
 CONFIG="$ROOT/deploy/config.sh"
@@ -35,7 +38,7 @@ usage() {
 TARGET="$1"
 
 if [[ ! -f "$CONFIG" ]]; then
-  echo "Missing $CONFIG — copy deploy/config.example.sh to deploy/config.sh"
+  echo "Missing $CONFIG — copy deploy/config.sh.example to deploy/config.sh"
   exit 1
 fi
 
@@ -99,6 +102,14 @@ EOF
   echo "    Node: ${NODE_BIN} (${NODE_VER})"
 }
 
+render_apache_conf() {
+  local src="$1" dest="$2"
+  sed -e "s|@DEPLOY_SSL_CERT_FILE@|${SSL_CERT_FILE}|g" \
+      -e "s|@DEPLOY_SSL_CERT_KEY_FILE@|${SSL_CERT_KEY_FILE}|g" \
+      -e "s|@DEPLOY_SSL_CERT_CHAIN_FILE@|${SSL_CERT_CHAIN_FILE}|g" \
+      "$src" > "$dest"
+}
+
 find_standalone_server() {
   local candidates=(
     "$FRONTEND/.next/standalone/server.js"
@@ -121,20 +132,26 @@ ensure_app_env() {
     return 0
   fi
 
-  local rendered_web="/tmp/rideconnect-web.${TARGET}.env"
-  local rendered_api="/tmp/rideconnect-api.${TARGET}.env"
+  local rendered_web rendered_api
+  rendered_web="$(deploy_mktemp)"
+  rendered_api="$(deploy_mktemp)"
+  deploy_tempfiles_track "$rendered_web"
+  deploy_tempfiles_track "$rendered_api"
   python3 "$ROOT/scripts/render-app-env.py" next "$ENV_FILE" "$rendered_web"
   python3 "$ROOT/scripts/render-app-env.py" api "$ENV_FILE" "$rendered_api"
-  scp "$rendered_web" "$SSH_HOST:/tmp/rideconnect-web.${TARGET}.env"
-  scp "$rendered_api" "$SSH_HOST:/tmp/rideconnect-api.${TARGET}.env"
+  local remote_paths
+  remote_paths="$(ssh "$SSH_HOST" 'umask 077; printf "%s %s" "$(mktemp)" "$(mktemp)"')"
+  local remote_web="${remote_paths%% *}"
+  local remote_api="${remote_paths#* }"
+  scp "$rendered_web" "$SSH_HOST:$remote_web"
+  scp "$rendered_api" "$SSH_HOST:$remote_api"
   ssh "$SSH_HOST" bash -s <<EOF
 set -euo pipefail
-sudo mv /tmp/rideconnect-web.${TARGET}.env '${APP_DIR}/.env'
-sudo chown www-data:www-data '${APP_DIR}/.env'
-sudo chmod 640 '${APP_DIR}/.env'
-sudo mv /tmp/rideconnect-api.${TARGET}.env '${API_DIR}/.env'
-sudo chown www-data:www-data '${API_DIR}/.env'
-sudo chmod 640 '${API_DIR}/.env'
+web_tmp='$remote_web'
+api_tmp='$remote_api'
+trap 'rm -f "\$web_tmp" "\$api_tmp"' EXIT
+sudo install -o www-data -g www-data -m 640 "\$web_tmp" '${APP_DIR}/.env'
+sudo install -o www-data -g www-data -m 640 "\$api_tmp" '${API_DIR}/.env'
 # Persistent uploads outside rsync overwrite of api tree code
 sudo mkdir -p '${DOCROOT}/uploads'
 sudo chown www-data:www-data '${DOCROOT}/uploads'
@@ -143,6 +160,8 @@ if [[ ! -e '${API_DIR}/uploads' ]]; then
 fi
 EOF
   rm -f "$rendered_web" "$rendered_api"
+  deploy_tempfiles_untrack "$rendered_web"
+  deploy_tempfiles_untrack "$rendered_api"
 }
 
 ensure_api_venv() {
@@ -167,9 +186,10 @@ sudo -u www-data "\$VENV_PY" -m pip install --upgrade pip -q
 sudo -u www-data "\$VENV_PY" -m pip install -r '${API_DIR}/requirements.txt' -q
 if [[ -f '${API_DIR}/.env' ]]; then
   # Do not bash-source .env — secrets may contain # ^ $ etc. Alembic/pydantic load .env from cwd.
-  sudo -u www-data bash -c 'cd "${API_DIR}" && exec .venv/bin/alembic upgrade head' || {
-    echo "WARNING: alembic upgrade failed — check DATABASE_URL / Postgres" >&2
-  }
+  if ! sudo -u www-data bash -c 'cd "${API_DIR}" && exec .venv/bin/alembic upgrade head'; then
+    echo "ERROR: alembic upgrade failed — check DATABASE_URL / Postgres" >&2
+    exit 1
+  fi
 fi
 EOF
 }
@@ -177,8 +197,15 @@ EOF
 ensure_runtime() {
   ensure_node
   echo "==> Ensuring Apache proxy + systemd runtime..."
-  scp "$ROOT/deploy/apache/pe-web-${TARGET}.conf" "$SSH_HOST:/tmp/pe-web-${TARGET}.conf"
-  scp "$ROOT/deploy/apache/pe-api-${TARGET}.conf" "$SSH_HOST:/tmp/pe-api-${TARGET}.conf"
+  local rendered_web_vhost rendered_api_vhost
+  rendered_web_vhost="$(deploy_mktemp)"
+  rendered_api_vhost="$(deploy_mktemp)"
+  deploy_tempfiles_track "$rendered_web_vhost"
+  deploy_tempfiles_track "$rendered_api_vhost"
+  render_apache_conf "$ROOT/deploy/apache/pe-web-${TARGET}.conf" "$rendered_web_vhost"
+  render_apache_conf "$ROOT/deploy/apache/pe-api-${TARGET}.conf" "$rendered_api_vhost"
+  scp "$rendered_web_vhost" "$SSH_HOST:/tmp/pe-web-${TARGET}.conf"
+  scp "$rendered_api_vhost" "$SSH_HOST:/tmp/pe-api-${TARGET}.conf"
   scp "$WEB_UNIT_EXAMPLE" "$SSH_HOST:/tmp/${WEB_SERVICE}.service"
   scp "$API_UNIT_EXAMPLE" "$SSH_HOST:/tmp/${API_SERVICE}.service"
   ssh "$SSH_HOST" bash -s <<EOF
@@ -214,6 +241,9 @@ sudo systemctl daemon-reload
 sudo systemctl enable ${WEB_SERVICE} ${API_SERVICE}
 sudo systemctl restart ${WEB_SERVICE} ${API_SERVICE}
 EOF
+  rm -f "$rendered_web_vhost" "$rendered_api_vhost"
+  deploy_tempfiles_untrack "$rendered_web_vhost"
+  deploy_tempfiles_untrack "$rendered_api_vhost"
 }
 
 verify_deploy() {

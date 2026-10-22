@@ -1,4 +1,4 @@
-# Postgres for RideConnect on the shared web host (192.168.3.3).
+# Postgres for RideConnect on the shared deploy host (optional; default path uses system Postgres).
 # Run from the environment docroot, e.g.:
 #   cd /var/www/phantomequestrian.com && sudo docker compose -f docker-compose.postgres.yml up -d
 # Dev uses a separate compose file or override ports via env.

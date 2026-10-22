@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ensure system PostgreSQL on the deploy host and create the app role/database.
-# Docker is not available on 192.168.3.3 — use apt postgresql (same pattern as host MySQL for UU/SS).
+# Docker is not available on the deploy host — use apt postgresql (same pattern as host MySQL for UU/SS).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -15,7 +15,7 @@ usage() {
 TARGET="$1"
 
 if [[ ! -f "$CONFIG" ]]; then
-  echo "Missing $CONFIG — copy deploy/config.example.sh to deploy/config.sh"
+  echo "Missing $CONFIG — copy deploy/config.sh.example to deploy/config.sh"
   exit 1
 fi
 

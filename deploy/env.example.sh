@@ -19,7 +19,7 @@
 #   *_REDIRECT_URI / FRONTEND_OAUTH_* → dev hosts
 #   ENVIRONMENT=development
 #
-# Host Postgres (no Docker on 192.168.3.3): ./scripts/server-db.sh dev|prod
+# Host Postgres on deploy server: ./scripts/server-db.sh dev|prod
 # listens on 127.0.0.1:5432 (same idea as host MySQL for UU/SS).
 # Prefer DB names: rideconnect (dev) and rideconnect_prod (prod).
 

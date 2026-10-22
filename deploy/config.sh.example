@@ -1,0 +1,10 @@
+# Copy to deploy/config.sh (gitignored) and set real values.
+SSH_HOST="deploy-user@SERVER_PRIVATE_IP"
+REMOTE_STAGING="~/rideconnect-deploy-staging"
+REMOTE_PROD="/var/www/phantomequestrian.com"
+REMOTE_DEV="/var/www/dev.phantomequestrian.com"
+
+# Apache TLS (shared host cert paths on the deploy server)
+SSL_CERT_FILE="CHANGE_ME/cert.pem"
+SSL_CERT_KEY_FILE="CHANGE_ME/privkey.pem"
+SSL_CERT_CHAIN_FILE="CHANGE_ME/chain.pem"

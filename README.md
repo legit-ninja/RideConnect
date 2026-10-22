@@ -111,7 +111,7 @@ Set `SEED_DEV_DATA=true` or `ENVIRONMENT=development` in `.env` for the seed scr
 
 **Never commit** `.env` or `.env.local`.
 
-## Deploy (dev / prod on 192.168.3.3)
+## Deploy (dev / prod on private deploy host)
 
 Same pipeline as Underdog Unlimited and Sound Strategy: local build → rsync → Apache TLS proxy → systemd. RideConnect adds FastAPI + system PostgreSQL.
 
@@ -124,7 +124,7 @@ Same pipeline as Underdog Unlimited and Sound Strategy: local build → rsync �
 Sibling Node ports on this host: Sound Strategy 3003/3004, PMA 3005/3006, Underdog Unlimited 3007/3008.
 
 ```bash
-cp deploy/config.example.sh deploy/config.sh
+cp deploy/config.sh.example deploy/config.sh
 cp deploy/env.example.sh deploy/env.dev.sh
 cp deploy/env.example.sh deploy/env.prod.sh
 # Fill secrets; use 127.0.0.1:5432 and correct public URLs per target

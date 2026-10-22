@@ -1,6 +1,6 @@
 ---
 name: rideconnect-deploy
-description: Deploy RideConnect (Next.js + FastAPI) to dev or prod on 192.168.3.3 via deploy.sh. Use when deploying, editing deploy/env files, Apache vhosts, systemd units, Postgres, or WordPress cutover.
+description: Deploy RideConnect (Next.js + FastAPI) to dev or prod via deploy.sh. Use when deploying, editing deploy/env files, Apache vhosts, systemd units, Postgres, or WordPress cutover.
 disable-model-invocation: true
 ---
 
@@ -16,14 +16,14 @@ Same pipeline as Underdog Unlimited / Sound Strategy: local build → rsync → 
 | dev | https://dev.phantomequestrian.com | https://shop.dev.phantomequestrian.com | https://api.dev.phantomequestrian.com | 3010 / 8010 | `/var/www/dev.phantomequestrian.com` | `rideconnect` |
 | prod | https://phantomequestrian.com | https://shop.phantomequestrian.com | https://api.phantomequestrian.com | 3009 / 8009 | `/var/www/phantomequestrian.com` | `rideconnect_prod` |
 
-SSH: `jlee@192.168.3.3`. Cert: `/etc/letsencrypt/live/underdogunlimited.com/` (expand SAN for `shop.` / `shop.dev.`).
+SSH and TLS paths: set in gitignored `deploy/config.sh` (copy from `deploy/config.sh.example`). Expand cert SANs for `shop.` / `shop.dev.` when needed.
 
 Shop Apache templates: `deploy/apache/pe-shop-{dev,prod}.conf` — proxy to the **same** Next port as apex (no extra systemd unit). Set `NEXT_PUBLIC_AUTH_COOKIE_DOMAIN` and include shop origins in `CORS_ORIGINS`.
 
 ## One-time / DB
 
 ```bash
-cp deploy/config.example.sh deploy/config.sh
+cp deploy/config.sh.example deploy/config.sh
 cp deploy/env.example.sh deploy/env.{dev,prod}.sh   # fill secrets; fix URLs/ports
 chmod +x scripts/server-setup.sh scripts/server-db.sh scripts/deploy.sh
 ./scripts/server-setup.sh
@@ -62,8 +62,8 @@ Do **not** bash-source server `.env` (secrets may contain `#` / `^`).
 | alembic / JWT weirdness | Ensure alembic runs via cwd `.env` load, not `source` |
 
 ```bash
-ssh jlee@192.168.3.3 'systemctl status rideconnect-web rideconnect-api'
-ssh jlee@192.168.3.3 'curl -sI http://127.0.0.1:3009/; curl -sI http://127.0.0.1:8009/health'
+ssh "$SSH_HOST" 'systemctl status rideconnect-web rideconnect-api'
+ssh "$SSH_HOST" 'curl -sI http://127.0.0.1:3009/; curl -sI http://127.0.0.1:8009/health'
 ```
 
 ## Branding

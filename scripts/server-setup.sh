@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
-# One-time host setup on jlee@192.168.3.3 — run after DNS + cert expand.
+# One-time host setup on the deploy server — run after DNS + cert expand.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="$ROOT/deploy/config.sh"
 
 if [[ ! -f "$CONFIG" ]]; then
-  echo "Missing $CONFIG — copy deploy/config.example.sh to deploy/config.sh"
+  echo "Missing $CONFIG — copy deploy/config.sh.example to deploy/config.sh"
   exit 1
 fi
 
 # shellcheck source=/dev/null
 source "$CONFIG"
+
+render_apache_conf() {
+  local src="$1" dest="$2"
+  sed -e "s|@DEPLOY_SSL_CERT_FILE@|${SSL_CERT_FILE}|g" \
+      -e "s|@DEPLOY_SSL_CERT_KEY_FILE@|${SSL_CERT_KEY_FILE}|g" \
+      -e "s|@DEPLOY_SSL_CERT_CHAIN_FILE@|${SSL_CERT_CHAIN_FILE}|g" \
+      "$src" > "$dest"
+}
 
 echo "==> Creating document roots..."
 ssh "$SSH_HOST" bash -s <<EOF
@@ -33,8 +41,11 @@ rm -f /tmp/rideconnect-docker-compose.postgres.yml
 EOF
 
 echo "==> Installing Apache vhost configs..."
+apache_tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$apache_tmp_dir"' EXIT
 for conf in pe-web-prod pe-web-dev pe-api-prod pe-api-dev pe-shop-prod pe-shop-dev; do
-  scp "$ROOT/deploy/apache/${conf}.conf" "$SSH_HOST:/tmp/${conf}.conf"
+  render_apache_conf "$ROOT/deploy/apache/${conf}.conf" "$apache_tmp_dir/${conf}.conf"
+  scp "$apache_tmp_dir/${conf}.conf" "$SSH_HOST:/tmp/${conf}.conf"
 done
 ssh "$SSH_HOST" bash -s <<'EOF'
 set -euo pipefail

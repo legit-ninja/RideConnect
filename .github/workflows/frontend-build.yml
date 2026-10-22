@@ -1,0 +1,149 @@
+name: Frontend build
+
+# Builds the Next.js frontend (output: standalone) on Node 20 and uploads a
+# deployable tarball as a workflow artifact. Nothing here deploys anywhere.
+#
+# - pull_request / push: verification build with placeholder NEXT_PUBLIC_*
+#   values (example.com). The artifact proves the build works; do NOT deploy it.
+# - workflow_dispatch (target = dev | prod): release build that reads the
+#   NEXT_PUBLIC_* values from the matching GitHub environment's variables.
+#   NEXT_PUBLIC_* values are inlined into the browser bundle at build time,
+#   so each target needs its own build. Only this artifact is meant for deploy.
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "scripts/package-frontend-artifact.sh"
+      - ".github/workflows/frontend-build.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "frontend/**"
+      - "scripts/package-frontend-artifact.sh"
+      - ".github/workflows/frontend-build.yml"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Release build for this environment (uses its GitHub environment variables)"
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-build-${{ github.workflow }}-${{ github.event_name }}-${{ inputs.target || 'ci' }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  verify:
+    name: Build (Node 20, placeholder env)
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_API_URL: https://api.example.com
+      NEXT_PUBLIC_SITE_URL: https://www.example.com
+      NEXT_PUBLIC_SHOP_URL: https://shop.example.com
+      NEXT_PUBLIC_AUTH_COOKIE_DOMAIN: .example.com
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Build the exact PR head (not the merge ref) so the artifact matches the reviewed commit.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Versions
+        run: |
+          node --version
+          npm --version
+      - name: Install (npm ci)
+        run: npm ci --no-audit --no-fund
+      - name: Check pinned versions
+        run: |
+          node -e '
+            const want = { next: "16.3.8", sharp: "0.35.5" };
+            let bad = 0;
+            for (const [n, v] of Object.entries(want)) {
+              const got = require(`./node_modules/${n}/package.json`).version;
+              console.log(`${n} ${got}`);
+              if (got !== v) { console.error(`expected ${n} ${v}`); bad = 1; }
+            }
+            process.exit(bad);
+          '
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Package standalone build
+        working-directory: .
+        run: scripts/package-frontend-artifact.sh ci "$RUNNER_TEMP/dist"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rideconnect-web-ci-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Release build (Node 20, ${{ inputs.target }})
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: ${{ inputs.target }}
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+      NEXT_PUBLIC_SHOP_URL: ${{ vars.NEXT_PUBLIC_SHOP_URL }}
+      NEXT_PUBLIC_SITE_NAME: ${{ vars.NEXT_PUBLIC_SITE_NAME }}
+      NEXT_PUBLIC_SITE_LOGO: ${{ vars.NEXT_PUBLIC_SITE_LOGO }}
+      NEXT_PUBLIC_AUTH_COOKIE_DOMAIN: ${{ vars.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN }}
+      NEXT_PUBLIC_AUTH_COOKIE_NAME: ${{ vars.NEXT_PUBLIC_AUTH_COOKIE_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Require environment variables
+        run: |
+          missing=0
+          for v in NEXT_PUBLIC_API_URL NEXT_PUBLIC_SITE_URL; do
+            if [ -z "${!v:-}" ]; then echo "::error::Variable $v is not set on the '${{ inputs.target }}' environment"; missing=1; fi
+          done
+          exit "$missing"
+      - name: Install (npm ci)
+        run: npm ci --no-audit --no-fund
+      - name: Build
+        run: npm run build
+      - name: Package standalone build
+        working-directory: .
+        run: scripts/package-frontend-artifact.sh "${{ inputs.target }}" "$RUNNER_TEMP/dist"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rideconnect-web-${{ inputs.target }}-${{ github.sha }}
+          path: ${{ runner.temp }}/dist/
+          if-no-files-found: error
+          retention-days: 30

@@ -3,6 +3,9 @@
 Revision ID: 020_shop_vendor_funnel
 Revises: 019_family_registration
 Create Date: 2026-08-01
+
+users.is_vendor moved to 021_users_is_vendor (idempotent) so prod DBs that already
+applied 020 with the column can upgrade cleanly.
 """
 
 from typing import Sequence, Union
@@ -64,11 +67,6 @@ def upgrade() -> None:
     fulfillment_type.create(bind, checkfirst=True)
     shop_payment_status.create(bind, checkfirst=True)
     business_unit.create(bind, checkfirst=True)
-
-    op.add_column(
-        "users",
-        sa.Column("is_vendor", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-    )
 
     species_table = sa.table(
         "species",
@@ -320,7 +318,7 @@ def downgrade() -> None:
     op.drop_table("products")
     op.drop_table("shop_categories")
     op.drop_table("vendor_profiles")
-    op.drop_column("users", "is_vendor")
+    # is_vendor is dropped in 021_users_is_vendor downgrade, not here.
 
     bind = op.get_bind()
     business_unit.drop(bind, checkfirst=True)

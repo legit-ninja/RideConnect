@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     stripe_publishable_key: str = ""
     stripe_connect_client_id: str = ""
     stripe_webhook_secret: str = ""
+    shop_dev_fake_payments: bool = False
     platform_commission_percent: int = 10
 
     google_client_id: str = ""

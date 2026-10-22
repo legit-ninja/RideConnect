@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
@@ -28,6 +28,46 @@ from app.schemas.shop import (
     ProductSpeciesTag,
 )
 from app.services.storage import get_public_url
+
+# Vendor-initiated order status changes (whole-order; vendor must own all line items).
+VENDOR_ORDER_TRANSITIONS: dict[ShopOrderStatus, frozenset[ShopOrderStatus]] = {
+    ShopOrderStatus.PAID: frozenset(
+        {ShopOrderStatus.FULFILLING, ShopOrderStatus.CANCELLED}
+    ),
+    ShopOrderStatus.FULFILLING: frozenset(
+        {ShopOrderStatus.SHIPPED, ShopOrderStatus.PICKED_UP, ShopOrderStatus.CANCELLED}
+    ),
+}
+
+
+def validate_vendor_order_transition(
+    from_status: ShopOrderStatus, to_status: ShopOrderStatus
+) -> None:
+    if from_status == to_status:
+        return
+    allowed = VENDOR_ORDER_TRANSITIONS.get(from_status, frozenset())
+    if to_status not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot transition order from {from_status.value} to {to_status.value}",
+        )
+
+
+def vendor_owns_all_order_products(
+    db: Session, order: ShopOrder, vendor_profile_id: UUID
+) -> bool:
+    product_ids = [i.product_id for i in order.items if i.product_id is not None]
+    if not product_ids:
+        return False
+    owned = db.scalar(
+        select(func.count())
+        .select_from(Product)
+        .where(
+            Product.id.in_(product_ids),
+            Product.vendor_profile_id == vendor_profile_id,
+        )
+    )
+    return int(owned or 0) == len(product_ids)
 
 
 def get_or_create_cart(db: Session, user_id: UUID) -> ShopCart:
@@ -218,22 +258,34 @@ def validate_checkout_address(fulfillment: FulfillmentType, payload: object) -> 
 
 
 def mark_order_paid(db: Session, order: ShopOrder, *, payment_intent_id: str | None) -> None:
-    if order.status != ShopOrderStatus.PENDING_PAYMENT:
+    if order.status in (
+        ShopOrderStatus.PAID,
+        ShopOrderStatus.FULFILLING,
+        ShopOrderStatus.SHIPPED,
+        ShopOrderStatus.PICKED_UP,
+        ShopOrderStatus.REFUNDED,
+    ):
         return
     prev = order.status
+    note = "stripe"
+    if prev == ShopOrderStatus.CANCELLED:
+        note = "stripe_paid_after_cancel_needs_refund"
+    elif prev != ShopOrderStatus.PENDING_PAYMENT:
+        return
     order.status = ShopOrderStatus.PAID
     if order.payment:
         order.payment.status = ShopPaymentStatus.PAID
         if payment_intent_id:
             order.payment.stripe_payment_intent_id = payment_intent_id
-    for item in order.items:
-        if item.product_id is None:
-            continue
-        product = db.get(Product, item.product_id)
-        if product is not None:
-            product.stock_qty = max(0, product.stock_qty - item.qty)
+    if prev == ShopOrderStatus.PENDING_PAYMENT:
+        for item in order.items:
+            if item.product_id is None:
+                continue
+            product = db.get(Product, item.product_id)
+            if product is not None:
+                product.stock_qty = max(0, product.stock_qty - item.qty)
     append_order_event(
-        db, order, to_status=ShopOrderStatus.PAID, actor_id=None, from_status=prev, note="stripe"
+        db, order, to_status=ShopOrderStatus.PAID, actor_id=None, from_status=prev, note=note
     )
 
 

@@ -185,6 +185,11 @@ ensure_runtime() {
 set -euo pipefail
 NODE_BIN="\$(command -v node || command -v nodejs)"
 sudo sed -i "s|ExecStart=.*node server.js|ExecStart=\${NODE_BIN} server.js|" /tmp/${WEB_SERVICE}.service
+# Next.js must listen on loopback only (Apache is the only client).
+if ! grep -q "^Environment=HOSTNAME=127.0.0.1\$" /tmp/${WEB_SERVICE}.service; then
+  sudo sed -i "/^Environment=PORT=/a Environment=HOSTNAME=127.0.0.1" /tmp/${WEB_SERVICE}.service
+fi
+grep -q "^Environment=HOSTNAME=127.0.0.1\$" /tmp/${WEB_SERVICE}.service || { echo "web unit is missing HOSTNAME=127.0.0.1" >&2; exit 1; }
 sudo cp /tmp/pe-web-${TARGET}.conf /etc/apache2/sites-available/pe-web-${TARGET}.conf
 sudo cp /tmp/pe-api-${TARGET}.conf /etc/apache2/sites-available/pe-api-${TARGET}.conf
 sudo a2ensite pe-web-${TARGET}.conf pe-api-${TARGET}.conf 2>/dev/null || true

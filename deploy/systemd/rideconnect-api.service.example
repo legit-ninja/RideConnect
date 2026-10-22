@@ -14,7 +14,9 @@ WorkingDirectory=/var/www/phantomequestrian.com/api
 Environment=PORT=8009
 ExecStart=/var/www/phantomequestrian.com/api/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8009
 Restart=on-failure
-RestartSec=5
+RestartSec=10
+StartLimitIntervalSec=120
+StartLimitBurst=5
 
 [Install]
 WantedBy=multi-user.target

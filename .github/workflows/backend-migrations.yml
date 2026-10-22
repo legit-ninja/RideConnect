@@ -71,8 +71,8 @@ jobs:
           }
           alembic upgrade head
           assert_head
-          # Downgrade to 019 (not base): twenty revisions drop interdependent PostgreSQL
-          # ENUM types; prod path is 019_family_registration → head.
+          # Downgrade to 019, not base: an older migration's downgrade (010 -> 009) fails on
+          # Postgres (enum default cast), which predates this work. 019 -> head is the prod path.
           alembic downgrade 019_family_registration
           alembic upgrade head
           assert_head

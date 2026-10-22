@@ -1182,6 +1182,15 @@ export function formatCents(cents: number, currency = "USD"): string {
   );
 }
 
+export type ShopPublicConfig = {
+  payments_enabled: boolean;
+  stripe_test_mode: boolean;
+};
+
+export function fetchShopConfig(): Promise<ShopPublicConfig> {
+  return request<ShopPublicConfig>("/shop/config");
+}
+
 export function fetchShopCategories(): Promise<ShopCategory[]> {
   return request<ShopCategory[]>("/shop/categories");
 }

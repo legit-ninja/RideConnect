@@ -26,3 +26,13 @@ def effective_stripe_secret_key() -> str | None:
 def effective_stripe_webhook_secret() -> str | None:
     secret = (settings.stripe_webhook_secret or "").strip()
     return secret or None
+
+
+def stripe_test_mode_active() -> bool:
+    secret = (settings.stripe_secret_key or "").strip()
+    publishable = (settings.stripe_publishable_key or "").strip()
+    if secret.startswith("sk_test_"):
+        return True
+    if publishable.startswith("pk_test_"):
+        return True
+    return False

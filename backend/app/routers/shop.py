@@ -36,6 +36,7 @@ from app.schemas.shop import (
     ProductResponse,
     ProductUpdateRequest,
     ShopCategoryResponse,
+    ShopPublicConfigResponse,
     VendorApplyRequest,
     VendorOrderFulfillRequest,
     VendorProfileResponse,
@@ -63,6 +64,7 @@ from app.services.stripe_settings import (
     effective_stripe_secret_key,
     effective_stripe_webhook_secret,
     stripe_secret_key_configured,
+    stripe_test_mode_active,
     stripe_webhook_secret_configured,
 )
 
@@ -136,6 +138,15 @@ def _apply_paid_checkout_session(
         payment_intent_id=session.get("payment_intent"),
     )
     db.commit()
+
+
+@router.get("/config", response_model=ShopPublicConfigResponse)
+def shop_public_config() -> ShopPublicConfigResponse:
+    # Authz: public shop payment metadata (no secrets).
+    return ShopPublicConfigResponse(
+        payments_enabled=checkout_payments_available(),
+        stripe_test_mode=stripe_test_mode_active(),
+    )
 
 
 @router.get("/categories", response_model=list[ShopCategoryResponse])

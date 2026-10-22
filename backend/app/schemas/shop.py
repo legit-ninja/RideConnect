@@ -7,6 +7,11 @@ from app.models.shop import FulfillmentType, ShopOrderStatus, ShopPaymentStatus
 from app.models.vendor_profile import VendorStatus
 
 
+class ShopPublicConfigResponse(BaseModel):
+    payments_enabled: bool
+    stripe_test_mode: bool
+
+
 class ShopCategoryResponse(BaseModel):
     id: UUID
     slug: str

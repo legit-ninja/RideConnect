@@ -2,6 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=deploy-tempfiles.sh
+source "$ROOT/scripts/deploy-tempfiles.sh"
+deploy_tempfiles_init
 FRONTEND="$ROOT/frontend"
 BACKEND="$ROOT/backend"
 CONFIG="$ROOT/deploy/config.sh"
@@ -130,9 +133,10 @@ ensure_app_env() {
   fi
 
   local rendered_web rendered_api
-  rendered_web="$(umask 077; mktemp)"
-  rendered_api="$(umask 077; mktemp)"
-  trap 'rm -f "$rendered_web" "$rendered_api"' RETURN
+  rendered_web="$(deploy_mktemp)"
+  rendered_api="$(deploy_mktemp)"
+  deploy_tempfiles_track "$rendered_web"
+  deploy_tempfiles_track "$rendered_api"
   python3 "$ROOT/scripts/render-app-env.py" next "$ENV_FILE" "$rendered_web"
   python3 "$ROOT/scripts/render-app-env.py" api "$ENV_FILE" "$rendered_api"
   local remote_paths
@@ -155,6 +159,9 @@ if [[ ! -e '${API_DIR}/uploads' ]]; then
   sudo ln -sfn '${DOCROOT}/uploads' '${API_DIR}/uploads'
 fi
 EOF
+  rm -f "$rendered_web" "$rendered_api"
+  deploy_tempfiles_untrack "$rendered_web"
+  deploy_tempfiles_untrack "$rendered_api"
 }
 
 ensure_api_venv() {
@@ -191,9 +198,10 @@ ensure_runtime() {
   ensure_node
   echo "==> Ensuring Apache proxy + systemd runtime..."
   local rendered_web_vhost rendered_api_vhost
-  rendered_web_vhost="$(umask 077; mktemp)"
-  rendered_api_vhost="$(umask 077; mktemp)"
-  trap 'rm -f "$rendered_web_vhost" "$rendered_api_vhost"' RETURN
+  rendered_web_vhost="$(deploy_mktemp)"
+  rendered_api_vhost="$(deploy_mktemp)"
+  deploy_tempfiles_track "$rendered_web_vhost"
+  deploy_tempfiles_track "$rendered_api_vhost"
   render_apache_conf "$ROOT/deploy/apache/pe-web-${TARGET}.conf" "$rendered_web_vhost"
   render_apache_conf "$ROOT/deploy/apache/pe-api-${TARGET}.conf" "$rendered_api_vhost"
   scp "$rendered_web_vhost" "$SSH_HOST:/tmp/pe-web-${TARGET}.conf"
@@ -233,6 +241,9 @@ sudo systemctl daemon-reload
 sudo systemctl enable ${WEB_SERVICE} ${API_SERVICE}
 sudo systemctl restart ${WEB_SERVICE} ${API_SERVICE}
 EOF
+  rm -f "$rendered_web_vhost" "$rendered_api_vhost"
+  deploy_tempfiles_untrack "$rendered_web_vhost"
+  deploy_tempfiles_untrack "$rendered_api_vhost"
 }
 
 verify_deploy() {

@@ -20,8 +20,10 @@ down_revision: Union[str, None] = "019_family_registration"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+# create_type=False: upgrade() creates these explicitly with checkfirst=True; letting
+# op.create_table create them again fails on Postgres ("type already exists").
 vendor_status = postgresql.ENUM(
-    "pending", "approved", "suspended", name="vendor_status", create_type=True
+    "pending", "approved", "suspended", name="vendor_status", create_type=False
 )
 shop_order_status = postgresql.ENUM(
     "pending_payment",
@@ -32,16 +34,16 @@ shop_order_status = postgresql.ENUM(
     "cancelled",
     "refunded",
     name="shop_order_status",
-    create_type=True,
+    create_type=False,
 )
 fulfillment_type = postgresql.ENUM(
-    "ship", "pickup", name="fulfillment_type", create_type=True
+    "ship", "pickup", name="fulfillment_type", create_type=False
 )
 shop_payment_status = postgresql.ENUM(
-    "pending", "paid", "failed", "refunded", name="shop_payment_status", create_type=True
+    "pending", "paid", "failed", "refunded", name="shop_payment_status", create_type=False
 )
 business_unit = postgresql.ENUM(
-    "rides", "shop", name="business_unit", create_type=True
+    "rides", "shop", name="business_unit", create_type=False
 )
 
 CATEGORY_SEED = [

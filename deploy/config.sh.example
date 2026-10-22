@@ -1,5 +1,7 @@
 # Copy to deploy/config.sh (gitignored) and set real values.
 SSH_HOST="deploy-user@SERVER_PRIVATE_IP"
+# Login that owns the docroots (defaults to the user part of SSH_HOST).
+DEPLOY_USER="deploy-user"
 REMOTE_STAGING="~/rideconnect-deploy-staging"
 REMOTE_PROD="/var/www/phantomequestrian.com"
 REMOTE_DEV="/var/www/dev.phantomequestrian.com"

@@ -21,12 +21,17 @@ render_apache_conf() {
       "$src" > "$dest"
 }
 
+if [[ -z "${DEPLOY_USER:-}" && "$SSH_HOST" == *@* ]]; then
+  DEPLOY_USER="${SSH_HOST%%@*}"
+fi
+: "${DEPLOY_USER:?Set DEPLOY_USER (or user@host in SSH_HOST) in deploy/config.sh}"
+
 echo "==> Creating document roots..."
 ssh "$SSH_HOST" bash -s <<EOF
 set -euo pipefail
 sudo mkdir -p ${REMOTE_PROD}/{app,api,uploads,_wordpress_backup} \
              ${REMOTE_DEV}/{app,api,uploads}
-sudo chown -R jlee:www-data ${REMOTE_PROD} ${REMOTE_DEV}
+sudo chown -R ${DEPLOY_USER}:www-data ${REMOTE_PROD} ${REMOTE_DEV}
 sudo chmod -R 775 ${REMOTE_PROD} ${REMOTE_DEV}
 EOF
 

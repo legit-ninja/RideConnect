@@ -11,6 +11,8 @@ User=www-data
 Group=www-data
 WorkingDirectory=/var/www/phantomequestrian.com/app
 Environment=PORT=3009
+# Bind to loopback only; Apache is the only client.
+Environment=HOSTNAME=127.0.0.1
 Environment=NODE_ENV=production
 ExecStart=/usr/bin/node server.js
 Restart=on-failure

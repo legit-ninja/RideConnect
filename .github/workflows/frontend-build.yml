@@ -78,7 +78,7 @@ jobs:
       - name: Check pinned versions
         run: |
           node -e '
-            const want = { next: "16.3.8", sharp: "0.35.5" };
+            const want = { next: "16.4.1", sharp: "0.35.5" };
             let bad = 0;
             for (const [n, v] of Object.entries(want)) {
               const got = require(`./node_modules/${n}/package.json`).version;
